@@ -185,6 +185,86 @@ ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
   return ErrorCodes::OPERATION_SUCCESS;
 }
 
+ErrorCodes getNearestPoseOnScrew( const Eigen::Matrix4d &g_i,
+                                  const Eigen::Matrix4d &g_f,
+                                  const Eigen::Matrix4d &g_t,
+                                  double &t,
+                                  double &d_pos,
+                                  double &d_rot)
+{
+  eigen_ext::DualQuat dq_i(g_i);
+  eigen_ext::DualQuat dq_f(g_f);
+
+  std::vector<double> d_pos_array(3,0);
+  std::vector<double> t_inter(3,0);
+
+  std::vector<Eigen::Matrix4d> g_inter;
+  g_inter.resize(3);
+
+  double t_i = 0;
+  double t_f = 1;
+  double L = t_f - t_i;
+
+  std::vector<eigen_ext::DualQuat> dq_t_inter;
+  dq_t_inter.resize(3);
+
+  int min_d_idx = 0;
+  double min_d = 100000;
+
+  bool init_flag = false;
+
+  while(min_d > 0.001)
+  {
+    L = t_f - t_i;
+
+    if(L < 0.001)
+    {
+      t = (t_i + t_f) / 2.0;
+      break;
+    }
+
+    t_inter[0] = t_i + (L/4.0);
+    t_inter[1] = t_i + (L/2.0);
+    t_inter[2] = t_f - (L/4.0);
+    
+    for(int i = 0; i < 3; i++)
+    {
+      dq_t_inter[i] = eigen_ext::DualQuat::dualQuatInterpolation(
+          dq_i, dq_f, t_inter[i]);
+      g_inter[i] = dq_t_inter[i].getTransform();
+      d_pos_array[i] = positionDistance(g_inter[i], g_t);
+    }
+
+    if(d_pos_array[0] < d_pos_array[1])
+    {
+      t_f = t_inter[1];
+      t = t_inter[0];
+      min_d = d_pos_array[0];
+    }
+    else if(d_pos_array[2] > d_pos_array[1])
+    {
+      t_i = t_inter[1];
+      t = t_inter[2];
+      min_d = d_pos_array[2];
+    }
+    else
+    {
+      t_i = t_inter[0];
+      t_f = t_inter[2];
+      t = t_inter[1];
+      min_d = d_pos_array[1];
+    }
+  }
+
+  dq_t_inter[0] = eigen_ext::DualQuat::dualQuatInterpolation(dq_i, dq_f, t);
+  g_inter[0] = dq_t_inter[0].getTransform();
+
+  d_pos = positionDistance(g_inter[0], g_t);
+  d_rot = rotationDistance(g_inter[0], g_t);
+
+  return ErrorCodes::OPERATION_SUCCESS;
+}
+
 KinematicsSolver::KinematicsSolver()
 {
 

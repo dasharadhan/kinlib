@@ -143,6 +143,31 @@ ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
                                 double theta,
                                 double h,
                                 Eigen::Vector3d &l);
+                                
+/*!
+  \brief    Get nearest pose on a constant screw motion which is nearest to a 
+            given pose
+
+  \details  Determines the pose on a constant screw motion which is nearest to
+            a given pose in SE(3) based on the Euclidean distance
+
+  \param    g_i   Initial pose of the constant screw motion
+  \param    g_f   Final pose of the constant screw motion
+  \param    g_t   Given pose from which we need to find the closest pose on the
+                  constant screw motion
+  \param    t     Interpolation parameter for the pose on the constant screw
+                  that is closest in distance to %g_t
+  \param    d_pos Euclidean distance between determined pose and %g_t
+  \param    d_rot Distance in SO(3) between determined pose and %g_t
+
+  \returns  Operation status
+*/
+ErrorCodes getNearestPoseOnScrew( const Eigen::Matrix4d &g_i,
+                                  const Eigen::Matrix4d &g_f,
+                                  const Eigen::Matrix4d &g_t,
+                                  double &t,
+                                  double &d_pos,
+                                  double &d_rot);
 
 class KinematicsSolver
 {
