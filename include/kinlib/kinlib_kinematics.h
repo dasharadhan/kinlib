@@ -92,7 +92,7 @@ double rotationDistance(eigen_ext::DualQuat &dq_1,
 /*!
   \brief    Get skew matrix for given vector
 
-  \details  Returns the skew matrix for the give vector
+  \details  Returns the skew matrix for the given vector
 
   \param    vec   Vector
 
