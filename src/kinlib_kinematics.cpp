@@ -97,6 +97,16 @@ Eigen::Matrix3d getSkewMatrix(const Eigen::VectorXd &vec)
   return skew_mat;
 }
 
+Eigen::Matrix4d getTransformationInv(const Eigen::Matrix4d &g)
+{
+  Eigen::Matrix4d g_inv = Eigen::Matrix4d::Identity();
+
+  g_inv.block<3,3>(0,0) = g.block<3,3>(0,0).transpose();
+  g_inv.block<3,1>(0,3) = -g_inv.block<3,3>(0,0) * g.block<3,1>(0,3);
+
+  return g_inv;
+}
+
 Eigen::Matrix<double,6,6> getAdjoint(const Eigen::Matrix4d &g)
 {
   Eigen::Matrix<double,6,6> adj = Eigen::Matrix<double,6,6>::Zero();

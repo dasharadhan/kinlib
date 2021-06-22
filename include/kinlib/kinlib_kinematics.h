@@ -101,6 +101,17 @@ double rotationDistance(eigen_ext::DualQuat &dq_1,
 Eigen::Matrix3d getSkewMatrix(const Eigen::VectorXd &vec);
 
 /*!
+  \brief    Get inverse of a rigid body transformation
+
+  \details  Returns the inverse for the given rigid body transformation
+
+  \param    g     Rigid body transformation
+
+  \returns  Inverse of %g
+*/
+Eigen::Matrix4d getTransformationInv(const Eigen::Matrix4d &g);
+
+/*!
   \brief    Get adjoint of a transformation
 
   \details  Returns the adjoint of the the given rigid body transformation
