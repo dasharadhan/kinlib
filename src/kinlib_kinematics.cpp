@@ -123,6 +123,68 @@ Eigen::Matrix<double,6,6> getAdjoint(const Eigen::Matrix4d &g)
   return adj;
 }
 
+ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
+                                const Eigen::Matrix4d &g_f,
+                                Eigen::Vector3d &omega,
+                                double theta,
+                                double h,
+                                Eigen::Vector3d &l)
+{
+  eigen_ext::DualQuat dq_i(g_i);
+  eigen_ext::DualQuat dq_f(g_f);
+
+  Eigen::Matrix4d g = g_f * getTransformationInv(g_i);
+
+  Eigen::Matrix3d R = g.block<3,3>(0,0);
+  Eigen::Vector3d p = g.block<3,1>(0,3);
+
+  Eigen::AngleAxisd angle_axis(R);
+
+  Eigen::Vector3d v = Eigen::Vector3d::Zero();
+
+  // Handle special case (Prismatic Joint)
+  if(angle_axis.angle() == 0)
+  {
+    // Set pitch to infinity(a very high value)
+    h = std::numeric_limits<double>::max();
+
+    // Magnitude of screw
+    theta = p.norm();
+
+    // Screw axis
+    //omega.head<3>(0) = p.normalized();
+    //omega(3) = 0;
+    omega = p.normalized();
+
+    // Point on the screw axis (origin)
+    //l.head<3>(0) = v;
+    //l(3) = 1;
+
+    return ErrorCodes::OPERATION_SUCCESS;
+  }
+
+  // Magnitude of screw
+  theta = p.norm();
+
+  // Screw axis
+  //omega.head<3>(0) = angle_axis.axis();
+  //omega(3) = 0;
+  omega = p.normalized();
+
+  Eigen::Matrix3d A = ((Eigen::Matrix3d::Identity() - R) * getSkewMatrix(omega))
+      + (theta * (omega * omega.transpose()));
+
+  v = A.inverse() * p;
+
+  // Pitch of screw
+  h = omega.transpose() * v;
+
+  // Point on the screw axis
+  l = omega.cross(v);
+
+  return ErrorCodes::OPERATION_SUCCESS;
+}
+
 KinematicsSolver::KinematicsSolver()
 {
 

@@ -122,6 +122,28 @@ Eigen::Matrix4d getTransformationInv(const Eigen::Matrix4d &g);
 */
 Eigen::Matrix<double,6,6> getAdjoint(const Eigen::Matrix4d &g);
 
+/*!
+  \brief    Get screw parameters for a constant screw motion
+
+  \details  Determines the screw parameters for a constant screw motion between
+            a given initial and final pose in SE(3)
+
+  \param    g_i     Initial pose of constant screw motion
+  \param    g_f     Final pose of constant screw motion
+  \param    omega   Screw axis direction
+  \param    theta   Magnitude of screw motion
+  \param    h       Pitch of screw motion
+  \param    l       Point on screw axis
+
+  \returns  Operation status
+*/
+ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
+                                const Eigen::Matrix4d &g_f,
+                                Eigen::Vector3d &omega,
+                                double theta,
+                                double h,
+                                Eigen::Vector3d &l);
+
 class KinematicsSolver
 {
   public:
