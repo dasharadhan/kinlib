@@ -265,6 +265,58 @@ ErrorCodes getNearestPoseOnScrew( const Eigen::Matrix4d &g_i,
   return ErrorCodes::OPERATION_SUCCESS;
 }
 
+ErrorCodes getScrewSegments(const std::vector<Eigen::Matrix4d> &g_seq,
+                            std::vector<unsigned int> &segs,
+                            double max_pos_d,
+                            double max_rot_d)
+{
+  segs.clear();
+
+  unsigned int start_idx = 0;
+
+  unsigned int i,j,k;
+
+  unsigned int end_idx;
+  unsigned int itr;
+
+  double pos_d_diff = 0;
+  double rot_d_diff = 0;
+  double nearest_t;
+
+  while(start_idx < g_seq.size())
+  {
+    for(end_idx = start_idx + 1; end_idx < g_seq.size(); end_idx++)
+    {
+      for(itr = start_idx + 1; itr <= end_idx; itr++)
+      {
+        getNearestPoseOnScrew(g_seq[start_idx], g_seq[end_idx], g_seq[itr],
+                              nearest_t, pos_d_diff, rot_d_diff);
+
+        if((pos_d_diff > max_pos_d) || (rot_d_diff > max_rot_d))
+        {
+          segs.push_back(end_idx);
+          start_idx = end_idx;
+
+          if(end_idx == (g_seq.size() - 1))
+          {
+            return ErrorCodes::OPERATION_SUCCESS;
+          }
+
+          break;
+        }
+      }
+
+      if(end_idx == (g_seq.size() - 1))
+      {
+        segs.push_back(end_idx);
+        return ErrorCodes::OPERATION_SUCCESS;
+      }
+    }
+  }
+
+  return ErrorCodes::OPERATION_SUCCESS;
+}
+
 KinematicsSolver::KinematicsSolver()
 {
 

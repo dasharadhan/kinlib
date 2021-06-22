@@ -143,7 +143,7 @@ ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
                                 double theta,
                                 double h,
                                 Eigen::Vector3d &l);
-                                
+
 /*!
   \brief    Get nearest pose on a constant screw motion which is nearest to a 
             given pose
@@ -168,6 +168,25 @@ ErrorCodes getNearestPoseOnScrew( const Eigen::Matrix4d &g_i,
                                   double &t,
                                   double &d_pos,
                                   double &d_rot);
+
+/*!
+  \brief    Segments a given sequence of poses into constant screw motion segments
+   
+  \details  Given a sequence of poses in SE(3), this function segments it into
+            a sequence of constant screw motion segments and returns the indices
+            at which each constant screw segment ends
+
+  \param    g_seq       Sequence of poses in SE(3)
+  \param    max_pos_d   Threshold in Euclidean distance for screw segment
+  \param    max_rot_d   Threshold in SO(3) distance for screw segment
+  \param    segs        Indices of poses at which each screw segment ends
+
+  \returns  Operation status
+*/
+ErrorCodes getScrewSegments(const std::vector<Eigen::Matrix4d> &g_seq,
+                            std::vector<unsigned int> &segs,
+                            double max_pos_d = 0.05,
+                            double max_rot_d = 0.5);
 
 class KinematicsSolver
 {
