@@ -16,6 +16,8 @@
 
 //#include <ros/ros.h>
 #include <trajectory_msgs/JointTrajectory.h>
+#include <kdl_parser/kdl_parser.hpp>
+#include <urdf/model.h>
 
 #include "kinlib.h"
 #include "manipulator.h"
@@ -200,6 +202,17 @@ class KinematicsSolver
       \brief    Constructor to initialize class object
     */
     KinematicsSolver(Manipulator manip);
+
+    /*!
+      \brief    To load Manipulator properties from parameter server
+
+      \param    robot_desc_file   Robot description file path
+      \param    base_link_name    Name of base link of manipulator
+      \param    tip_link_name     Name of tip link of manipulator
+    */
+    bool loadManipulator( std::string robot_desc_file,
+                          std::string base_link_name,
+                          std::string tip_link_name);
 
     /*!
       \brief    To get Manipulator object of the kinematic solver
