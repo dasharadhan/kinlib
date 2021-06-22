@@ -10,15 +10,29 @@ if(NOT EIGEN3_INCLUDE_DIRS)
   set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 endif()
 
-find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  std_msgs
-  trajectory_msgs
+find_package(
+  catkin REQUIRED COMPONENTS
+    roscpp
+    std_msgs
+    trajectory_msgs
+    urdf
+    kdl_parser
 )
 
+find_package(Boost REQUIRED system filesystem)
+
 catkin_package(
-  INCLUDE_DIRS include
-  DEPENDS EIGEN3
+  INCLUDE_DIRS
+    include
+  CATKIN_DEPENDS
+    roscpp
+    std_msgs
+    trajectory_msgs
+    urdf
+    kdl_parser
+  DEPENDS
+    EIGEN3
+    Boost
 )
 
 include_directories(
