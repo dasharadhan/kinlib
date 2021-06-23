@@ -6,6 +6,9 @@ add_compile_options(-std=c++11)
 
 find_package(Eigen3 REQUIRED)
 
+set(KINLIB_TEST_RESOURCES_DIR "${CMAKE_CURRENT_LIST_DIR}/files")
+configure_file("include/${PROJECT_NAME}_test/config.h.in" "${CATKIN_DEVEL_PREFIX}/include/${PROJECT_NAME}_test/config.h")
+
 if(NOT EIGEN3_INCLUDE_DIRS)
   set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
 endif()
