@@ -439,6 +439,11 @@ bool KinematicsSolver::loadManipulator( std::string robot_desc_file,
   return true;
 }
 
+Manipulator KinematicsSolver::getManipulator(void)
+{
+  return manipulator_;
+}
+
 ErrorCodes KinematicsSolver::getFK(const Eigen::VectorXd &jnt_values, 
                                   Eigen::Matrix4d &g_base_tool)
 {
