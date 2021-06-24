@@ -23,8 +23,20 @@
 #include "manipulator.h"
 #include "DualQuat.h"
 
+#define PURE_TRANSLATION_ROT_ANGLE_THRESHOLD  1.0e-5
+#define PURE_ROTATION_PITCH_THRESHOLD         1.0e-5
+#define NO_MOTION_MAGNITUDE_THRESHOLD         1.0e-5
+
 namespace kinlib
 {
+/*!
+  \brief    Categories of screw motion
+*/
+typedef enum{ NO_MOTION,
+              GENERAL_SCREW,
+              PURE_ROTATION,
+              PURE_TRANSLATION }ScrewMotionType;
+
 /*!
   \brief    To get distance between two rigid transformations
 
@@ -130,21 +142,23 @@ Eigen::Matrix<double,6,6> getAdjoint(const Eigen::Matrix4d &g);
   \details  Determines the screw parameters for a constant screw motion between
             a given initial and final pose in SE(3)
 
-  \param    g_i     Initial pose of constant screw motion
-  \param    g_f     Final pose of constant screw motion
-  \param    omega   Screw axis direction
-  \param    theta   Magnitude of screw motion
-  \param    h       Pitch of screw motion
-  \param    l       Point on screw axis
+  \param    g_i                 Initial pose of constant screw motion
+  \param    g_f                 Final pose of constant screw motion
+  \param    omega               Screw axis direction
+  \param    theta               Magnitude of screw motion
+  \param    h                   Pitch of screw motion
+  \param    l                   Point on screw axis
+  \param    screw_motion_type   Type of motion
 
   \returns  Operation status
 */
 ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
                                 const Eigen::Matrix4d &g_f,
                                 Eigen::Vector3d &omega,
-                                double theta,
-                                double h,
-                                Eigen::Vector3d &l);
+                                double &theta,
+                                double &h,
+                                Eigen::Vector3d &l,
+                                ScrewMotionType &screw_motion_type);
 
 /*!
   \brief    Get nearest pose on a constant screw motion which is nearest to a 
