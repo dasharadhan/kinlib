@@ -126,9 +126,10 @@ Eigen::Matrix<double,6,6> getAdjoint(const Eigen::Matrix4d &g)
 ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
                                 const Eigen::Matrix4d &g_f,
                                 Eigen::Vector3d &omega,
-                                double theta,
-                                double h,
-                                Eigen::Vector3d &l)
+                                double &theta,
+                                double &h,
+                                Eigen::Vector3d &l,
+                                ScrewMotionType &screw_motion_type)
 {
   eigen_ext::DualQuat dq_i(g_i);
   eigen_ext::DualQuat dq_f(g_f);
@@ -142,23 +143,41 @@ ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
 
   Eigen::Vector3d v = Eigen::Vector3d::Zero();
 
-  // Handle special case (Prismatic Joint)
-  if(angle_axis.angle() == 0)
+  // Assume that the motion is a general screw motion
+  // Check for special cases is included later
+  screw_motion_type = ScrewMotionType::GENERAL_SCREW;
+
+  // Handle special case (Pure Translation)
+  if(abs(angle_axis.angle()) <= PURE_TRANSLATION_ROT_ANGLE_THRESHOLD)
   {
-    // Set pitch to infinity(a very high value)
-    h = std::numeric_limits<double>::max();
+    // Pitch is infinity for pure translation
+    // Set as 0 because infinity cannot be represented
+    // Ignore pitch if screw_motion_type = ScrewMotionType::PURE_TRANSLATION
+    h = 0;
+
+    // Set screw_motion_type as ScrewMotionType::PURE_TRANSLATION
+    screw_motion_type = ScrewMotionType::PURE_TRANSLATION;
 
     // Magnitude of screw
     theta = p.norm();
 
+    // Handle special case where there is no motion
+    // (i.e) g_i = g_f
+    if(theta <= NO_MOTION_MAGNITUDE_THRESHOLD)
+    {
+      screw_motion_type = ScrewMotionType::NO_MOTION;
+
+      omega(0) = 0; omega(1) = 0; omega(2) = 0;
+      l(0) = 0; l(1) = 0; l(2) = 0;
+
+      return ErrorCodes::OPERATION_SUCCESS;
+    }
+
     // Screw axis
-    //omega.head<3>(0) = p.normalized();
-    //omega(3) = 0;
     omega = p.normalized();
 
     // Point on the screw axis (origin)
-    //l.head<3>(0) = v;
-    //l(3) = 1;
+    l(0) = 0; l(1) = 0; l(2) = 0;
 
     return ErrorCodes::OPERATION_SUCCESS;
   }
@@ -167,8 +186,6 @@ ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
   theta = p.norm();
 
   // Screw axis
-  //omega.head<3>(0) = angle_axis.axis();
-  //omega(3) = 0;
   omega = p.normalized();
 
   Eigen::Matrix3d A = ((Eigen::Matrix3d::Identity() - R) * getSkewMatrix(omega))
@@ -178,6 +195,12 @@ ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
 
   // Pitch of screw
   h = omega.transpose() * v;
+
+  // Check if motion is pure rotation
+  if(h < PURE_ROTATION_PITCH_THRESHOLD)
+  {
+    screw_motion_type = ScrewMotionType::PURE_ROTATION;
+  }
 
   // Point on the screw axis
   l = omega.cross(v);
