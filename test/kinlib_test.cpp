@@ -15,6 +15,10 @@ class KinlibTest : public testing::Test
       urdf_file_path_ = (res_dir / "baxter.urdf").string();
       jnt_ang_file_path_ = (res_dir / "joint_angles.csv").string();
       matlab_fk_results_path_ = (res_dir / "matlab_fk_results.csv").string();
+      screw_param_check_g_i_path_ = (res_dir / "screw_param_check_g_i.csv").string();
+      screw_param_check_g_f_path_ = (res_dir / "screw_param_check_g_f.csv").string();
+      screw_param_results_path_ = (res_dir / "screw_params.csv").string();
+
 
       joint_names_.push_back("left_s0");
       joint_names_.push_back("left_s1");
@@ -30,6 +34,9 @@ class KinlibTest : public testing::Test
     std::string urdf_file_path_;
     std::string jnt_ang_file_path_;
     std::string matlab_fk_results_path_;
+    std::string screw_param_check_g_i_path_;
+    std::string screw_param_check_g_f_path_;
+    std::string screw_param_results_path_;
     std::vector<std::string> joint_names_;
 };
 
@@ -96,6 +103,24 @@ TEST_F(KinlibTest, KinSolverFK)
 
     ASSERT_EQ(g_check, true);
   }
+}
+
+TEST_F(KinlibTest, GetScrewParamCheck)
+{
+  // Load rigid body poses and screw parameters
+  arma::Mat<double> rigid_body_poses_i;
+  arma::Mat<double> rigid_body_poses_f;
+  arma::Mat<double> matlab_screw_params;
+  rigid_body_poses_i.load(screw_param_check_g_i_path_);
+  rigid_body_poses_f.load(screw_param_check_g_f_path_);
+  matlab_screw_params.load(screw_param_results_path_);
+
+  // Check screw params
+  // First 25 poses comprise of pure translation motion
+  // Next 25 poses comprise of pure rotational motion
+  // Next 5 poses comprise of same initial and final poses (No motion)
+  // Remaining poses comprise of general screw motion
+
 }
 
 int main(int argc, char** argv)
