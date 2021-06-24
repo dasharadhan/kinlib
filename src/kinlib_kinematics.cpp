@@ -197,7 +197,7 @@ ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
   h = omega.transpose() * v;
 
   // Check if motion is pure rotation
-  if(h < PURE_ROTATION_PITCH_THRESHOLD)
+  if(fabs(h) < PURE_ROTATION_PITCH_THRESHOLD)
   {
     screw_motion_type = ScrewMotionType::PURE_ROTATION;
   }
