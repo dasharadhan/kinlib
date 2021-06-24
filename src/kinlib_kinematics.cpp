@@ -148,7 +148,7 @@ ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
   screw_motion_type = ScrewMotionType::GENERAL_SCREW;
 
   // Handle special case (Pure Translation)
-  if(abs(angle_axis.angle()) <= PURE_TRANSLATION_ROT_ANGLE_THRESHOLD)
+  if(fabs(angle_axis.angle()) <= PURE_TRANSLATION_ROT_ANGLE_THRESHOLD)
   {
     // Pitch is infinity for pure translation
     // Set as 0 because infinity cannot be represented
@@ -861,13 +861,13 @@ determine_next_angles:
       {
         joint_limit_id = i + 1;
 
-        double max_val = abs(joint_values_delta(0));
+        double max_val = fabs(joint_values_delta(0));
 
         for(int j = 1; j < manipulator_.joint_count_; j++)
         {
-          if(abs(joint_values_delta(j)) > max_val)
+          if(fabs(joint_values_delta(j)) > max_val)
           {
-            max_val = abs(joint_values_delta(j));
+            max_val = fabs(joint_values_delta(j));
           }
         }
 
