@@ -183,10 +183,10 @@ ErrorCodes getScrewParameters(  const Eigen::Matrix4d &g_i,
   }
 
   // Magnitude of screw
-  theta = p.norm();
+  theta = angle_axis.angle();
 
   // Screw axis
-  omega = p.normalized();
+  omega = angle_axis.axis();
 
   Eigen::Matrix3d A = ((Eigen::Matrix3d::Identity() - R) * getSkewMatrix(omega))
       + (theta * (omega * omega.transpose()));
