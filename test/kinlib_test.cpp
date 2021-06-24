@@ -115,11 +115,123 @@ TEST_F(KinlibTest, GetScrewParamCheck)
   rigid_body_poses_f.load(screw_param_check_g_f_path_);
   matlab_screw_params.load(screw_param_results_path_);
 
+  Eigen::Matrix4d g_i;
+  Eigen::Matrix4d g_f;
+  Eigen::Vector3d omega;
+  Eigen::Vector3d l;
+  double theta;
+  double h;
+  kinlib::ScrewMotionType motion_type;
+
+  double diff;
+  bool check;
+
   // Check screw params
   // First 25 poses comprise of pure translation motion
+  for(int i = 0; i < 25; i++)
+  {
+    for(int j = 0; j < 4; j++)
+    {
+      for(int k = 0; k < 4; k++)
+      {
+        g_i(j,k) = rigid_body_poses_i((i*4)+j,k);
+        g_f(j,k) = rigid_body_poses_f((i*4)+j,k);
+      }
+    }
+    
+    ASSERT_EQ(
+        kinlib::getScrewParameters(g_i, g_f, omega, theta, h, l, motion_type),
+        kinlib::ErrorCodes::OPERATION_SUCCESS);
+
+    ASSERT_EQ(motion_type, kinlib::ScrewMotionType::PURE_TRANSLATION) <<
+      "Pure translation test : " << i+1 << '\n';
+
+    diff = fabs(theta - matlab_screw_params(i,3));
+    if(diff <= 1.0e-5)
+    {
+      check = true;
+    }
+    else
+    {
+      check = false;
+    }
+    ASSERT_EQ(check, true);
+
+    check = true;
+    for(int j = 0; j < 3; j++)
+    {
+      diff = fabs(omega(j) - matlab_screw_params(i,j));
+      if(diff > 1.0e-5)
+      {
+        check = false;
+        break;
+      }
+    }
+    ASSERT_EQ(check, true);
+  }
+
   // Next 25 poses comprise of pure rotational motion
+  for(int i = 25; i < 50; i++)
+  {
+    for(int j = 0; j < 4; j++)
+    {
+      for(int k = 0; k < 4; k++)
+      {
+        g_i(j,k) = rigid_body_poses_i((i*4)+j,k);
+        g_f(j,k) = rigid_body_poses_f((i*4)+j,k);
+      }
+    }
+    
+    ASSERT_EQ(
+        kinlib::getScrewParameters(g_i, g_f, omega, theta, h, l, motion_type),
+        kinlib::ErrorCodes::OPERATION_SUCCESS);
+
+    ASSERT_EQ(motion_type, kinlib::ScrewMotionType::PURE_ROTATION) <<
+      "Pure rotation test : " << i+1 << '\n';
+
+  }
+
   // Next 5 poses comprise of same initial and final poses (No motion)
+  for(int i = 50; i < 55; i++)
+  {
+    for(int j = 0; j < 4; j++)
+    {
+      for(int k = 0; k < 4; k++)
+      {
+        g_i(j,k) = rigid_body_poses_i((i*4)+j,k);
+        g_f(j,k) = rigid_body_poses_f((i*4)+j,k);
+      }
+    }
+    
+    ASSERT_EQ(
+        kinlib::getScrewParameters(g_i, g_f, omega, theta, h, l, motion_type),
+        kinlib::ErrorCodes::OPERATION_SUCCESS);
+
+    ASSERT_EQ(motion_type, kinlib::ScrewMotionType::NO_MOTION) <<
+      "No motion test : " << i+1 << '\n';
+
+  }
+
   // Remaining poses comprise of general screw motion
+  for(int i = 55; i < matlab_screw_params.n_rows; i++)
+  {
+    for(int j = 0; j < 4; j++)
+    {
+      for(int k = 0; k < 4; k++)
+      {
+        g_i(j,k) = rigid_body_poses_i((i*4)+j,k);
+        g_f(j,k) = rigid_body_poses_f((i*4)+j,k);
+      }
+    }
+    
+    ASSERT_EQ(
+        kinlib::getScrewParameters(g_i, g_f, omega, theta, h, l, motion_type),
+        kinlib::ErrorCodes::OPERATION_SUCCESS);
+
+    ASSERT_EQ(motion_type, kinlib::ScrewMotionType::GENERAL_SCREW) <<
+      "General screw motion test : " << i+1 << '\n';
+
+  }
 
 }
 
