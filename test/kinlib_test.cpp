@@ -147,7 +147,7 @@ TEST_F(KinlibTest, GetScrewParamCheck)
       "Pure translation test : " << i+1 << '\n';
 
     diff = fabs(theta - matlab_screw_params(i,3));
-    if(diff <= 1.0e-5)
+    if(diff <= 1.0e-8)
     {
       check = true;
     }
@@ -161,7 +161,7 @@ TEST_F(KinlibTest, GetScrewParamCheck)
     for(int j = 0; j < 3; j++)
     {
       diff = fabs(omega(j) - matlab_screw_params(i,j));
-      if(diff > 1.0e-5)
+      if(diff > 1.0e-8)
       {
         check = false;
         break;
@@ -189,6 +189,56 @@ TEST_F(KinlibTest, GetScrewParamCheck)
     ASSERT_EQ(motion_type, kinlib::ScrewMotionType::PURE_ROTATION) <<
       "Pure rotation test : " << i+1 << '\n';
 
+    check = true;
+    for(int j = 0; j < 3; j++)
+    {
+      diff = fabs(omega(j) - matlab_screw_params(i,j));
+      if(diff > 1.0e-8)
+      {
+        check = false;
+        break;
+      }
+    }
+    ASSERT_EQ(check, true) << "Pure rotation test axis comparison : " << 
+      i+1 << '\n';
+
+    diff = fabs(theta - matlab_screw_params(i,3));
+    if(diff > 1.0e-8)
+    {
+      check = false;
+    }
+    else
+    {
+      check = true;
+    }
+    ASSERT_EQ(check, true) << "Pure rotation test magnitude comparison : " <<
+      i+1;
+
+    diff = fabs(h - matlab_screw_params(i,4));
+    if(diff > 1.0e-8)
+    {
+      check = false;
+    }
+    else
+    {
+      check = true;
+    }
+    ASSERT_EQ(check, true) << "Pure rotation test pitch comparison : " <<
+      i+1 << '\n';
+
+    check = true;
+    for(int j = 0; j < 3; j++)
+    {
+      diff = fabs(l(j) - matlab_screw_params(i,j+5));
+      if(diff > 1.0e-8)
+      {
+        check = false;
+        break;
+      }
+    }
+    ASSERT_EQ(check, true) << "Pure rotation test axis point comparison : " << 
+      i+1 << '\n';
+
   }
 
   // Next 5 poses comprise of same initial and final poses (No motion)
@@ -209,7 +259,6 @@ TEST_F(KinlibTest, GetScrewParamCheck)
 
     ASSERT_EQ(motion_type, kinlib::ScrewMotionType::NO_MOTION) <<
       "No motion test : " << i+1 << '\n';
-
   }
 
   // Remaining poses comprise of general screw motion
@@ -231,6 +280,55 @@ TEST_F(KinlibTest, GetScrewParamCheck)
     ASSERT_EQ(motion_type, kinlib::ScrewMotionType::GENERAL_SCREW) <<
       "General screw motion test : " << i+1 << '\n';
 
+    check = true;
+    for(int j = 0; j < 3; j++)
+    {
+      diff = fabs(omega(j) - matlab_screw_params(i,j));
+      if(diff > 1.0e-8)
+      {
+        check = false;
+        break;
+      }
+    }
+    ASSERT_EQ(check, true) << "General motion test axis comparison : " << 
+      i+1 << '\n';
+
+    diff = fabs(theta - matlab_screw_params(i,3));
+    if(diff > 1.0e-8)
+    {
+      check = false;
+    }
+    else
+    {
+      check = true;
+    }
+    ASSERT_EQ(check, true) << "General motion test magnitude comparison : " <<
+      i+1;
+
+    diff = fabs(h - matlab_screw_params(i,4));
+    if(diff > 1.0e-8)
+    {
+      check = false;
+    }
+    else
+    {
+      check = true;
+    }
+    ASSERT_EQ(check, true) << "General motion test pitch comparison : " <<
+      i+1 << '\n';
+
+    check = true;
+    for(int j = 0; j < 3; j++)
+    {
+      diff = fabs(l(j) - matlab_screw_params(i,j+5));
+      if(diff > 1.0e-8)
+      {
+        check = false;
+        break;
+      }
+    }
+    ASSERT_EQ(check, true) << "General motion test axis point comparison : " << 
+      i+1 << '\n';
   }
 
 }
