@@ -18,7 +18,7 @@ class KinlibTest : public testing::Test
       screw_param_check_g_i_path_ = (res_dir / "screw_param_check_g_i.csv").string();
       screw_param_check_g_f_path_ = (res_dir / "screw_param_check_g_f.csv").string();
       screw_param_results_path_ = (res_dir / "screw_params.csv").string();
-
+      screw_segs_results_path_ = (res_dir / "screw_segs_results.csv").string();
 
       joint_names_.push_back("left_s0");
       joint_names_.push_back("left_s1");
@@ -37,6 +37,7 @@ class KinlibTest : public testing::Test
     std::string screw_param_check_g_i_path_;
     std::string screw_param_check_g_f_path_;
     std::string screw_param_results_path_;
+    std::string screw_segs_results_path_;
     std::vector<std::string> joint_names_;
 };
 
@@ -331,6 +332,64 @@ TEST_F(KinlibTest, GetScrewParamCheck)
       i+1 << '\n';
   }
 
+}
+
+TEST_F(KinlibTest, GetScrewSegmentsCheck)
+{
+  // Load Manipulator Properties
+  EXPECT_EQ(
+      kin_solver_.loadManipulator(urdf_file_path_, "base", "left_gripper_base"),
+      true);
+  
+  // Compute Forward Kinematics to determine sequence of end-effector poses
+  arma::Mat<double> jnt_angles;
+  jnt_angles.load(jnt_ang_file_path_);
+
+  Eigen::VectorXd jnt_val(7);
+  Eigen::Matrix4d ee_g;
+  std::vector<Eigen::Matrix4d> ee_g_seq;
+  for(unsigned int i = 0; i < jnt_angles.n_rows; i++)
+  {
+    for(int j = 0; j < 7; j++)
+    {
+      jnt_val(j) = jnt_angles(i,j);
+    }
+
+    ASSERT_EQ(kin_solver_.getFK(jnt_val, ee_g),
+              kinlib::ErrorCodes::OPERATION_SUCCESS);
+
+    ee_g_seq.push_back(ee_g);
+  }
+
+  // Load screw segmentation results
+  arma::Mat<unsigned int> seg_results;
+  seg_results.load(screw_segs_results_path_);
+
+  std::vector<unsigned int> segs;
+
+  ASSERT_EQ(kinlib::getScrewSegments(ee_g_seq, segs, 0.01, 0.15),
+            kinlib::ErrorCodes::OPERATION_SUCCESS) <<
+            "Error in segmentation" << '\n';
+
+  std::cout << "MATLAB segs   : \n";
+  for(unsigned int i = 0; i < seg_results.n_cols; i++)
+  {
+    std::cout << seg_results(0,i) << "  ";
+  }
+  std::cout << '\n';
+  std::cout << "Computed segs : \n";
+  for(unsigned int i = 0; i < segs.size(); i++)
+  {
+    std::cout << segs[i] << "  ";
+  }
+  std::cout << '\n';
+
+  ASSERT_EQ(segs.size(), seg_results.n_cols) << "Number of segments not same\n";
+
+  for(unsigned int i = 0; i < segs.size(); i++)
+  {
+    ASSERT_EQ(segs[i]+1, seg_results(0,i)) << "Segmentation results not same\n";
+  }
 }
 
 int main(int argc, char** argv)
