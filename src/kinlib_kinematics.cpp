@@ -232,9 +232,56 @@ ErrorCodes getNearestPoseOnScrew( const Eigen::Matrix4d &g_i,
   dq_t_inter.resize(3);
 
   int min_d_idx = 0;
-  double min_d = 100000;
+  double min_d = 10000000;
 
   bool init_flag = false;
+
+  std::vector<double> coarse_d(10,0);
+
+  // Do a initial coarse search
+  for(int i = 0; i <= 10; i++)
+  {
+    double t_coarse = i * 0.1;
+  
+    dq_t_inter[0] = eigen_ext::DualQuat::dualQuatInterpolation(
+        dq_i, dq_f, t_coarse);
+    g_inter[0] = dq_t_inter[0].getTransform();
+    d_pos_array[0] = positionDistance(g_inter[0], g_t);
+
+    if(d_pos_array[0] < min_d)
+    {
+      min_d = d_pos_array[0];
+      min_d_idx = i;
+    }
+  }
+
+  if(min_d < 1.0e-3)
+  {
+    t = min_d_idx * 0.1;
+    goto compute_distances;
+  }
+
+  if(min_d_idx == 0)
+  {
+    t = 0;
+    t_i = 0;
+    t_f = 0.1;
+    L = 0.1;
+  }
+  else if(min_d_idx == 10)
+  {
+    t = 1;
+    t_i = 0.9;
+    t_f = 1;
+    L = 0.1;
+  }
+  else
+  {
+    t = min_d_idx * 0.1;
+    t_i = (min_d_idx * 0.1) - 0.1;
+    t_f = (min_d_idx * 0.1) + 0.1;
+    L = 0.1;
+  }
 
   while(min_d > 0.001)
   {
@@ -264,7 +311,7 @@ ErrorCodes getNearestPoseOnScrew( const Eigen::Matrix4d &g_i,
       t = t_inter[0];
       min_d = d_pos_array[0];
     }
-    else if(d_pos_array[2] > d_pos_array[1])
+    else if(d_pos_array[2] < d_pos_array[1])
     {
       t_i = t_inter[1];
       t = t_inter[2];
@@ -279,6 +326,7 @@ ErrorCodes getNearestPoseOnScrew( const Eigen::Matrix4d &g_i,
     }
   }
 
+compute_distances:
   dq_t_inter[0] = eigen_ext::DualQuat::dualQuatInterpolation(dq_i, dq_f, t);
   g_inter[0] = dq_t_inter[0].getTransform();
 
