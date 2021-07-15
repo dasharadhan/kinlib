@@ -4,14 +4,13 @@
 
 /* Author: Dasharadhan Mahalingam */
 
-//#include <iostream>
+#include <iostream>
 #include "kinlib/kinlib_kinematics.h"
 
 Eigen::IOFormat PrintFormat(4,0,", ","\n");
 
 #if DEBUG
 
-#include "eigen_matrix_formatting.h"
 #include <signal.h>
 #include <fstream>
 #include <ctime>
@@ -399,117 +398,6 @@ KinematicsSolver::KinematicsSolver(Manipulator manip) :
 
 }
 
-bool KinematicsSolver::loadManipulator( std::string robot_desc_file,
-                                        std::string base_link_name,
-                                        std::string tip_link_name)
-{
-  urdf::Model urdf_model;
-  if(!urdf_model.initFile(robot_desc_file))
-  {
-    std::cout << "Error loading URDF file!";
-    std::cout.flush();
-    return false;
-  }
-
-  KDL::Tree robot_tree;
-  if(!kdl_parser::treeFromFile(robot_desc_file, robot_tree))
-  {
-    std::cout << "Error constructing KDL Tree!";
-    std::cout.flush();
-    return false;
-  }
-
-  std::map<std::string, urdf::JointSharedPtr> jnt_list = urdf_model.joints_;
-
-  KDL::Chain manip_chain;
-  if(!robot_tree.getChain(base_link_name, tip_link_name, manip_chain))
-  {
-    std::cout << "Error constructing KDL Chain!";
-    std::cout.flush();
-    return false;
-  }
-  
-  Eigen::Matrix4d t_ref;
-  Eigen::Matrix4d t_jnt;
-  Eigen::Matrix4d t_tip;
-
-  Eigen::Vector4d p_jnt;
-  Eigen::Vector4d v_jnt;
-
-  t_ref <<  1, 0, 0, 0, 
-            0, 1, 0, 0, 
-            0, 0, 1, 0, 
-            0, 0, 0, 1;
-
-  t_tip <<  1, 0, 0, 0, 
-            0, 1, 0, 0, 
-            0, 0, 1, 0, 
-            0, 0, 0, 1;
-
-  p_jnt << 0, 0, 0, 1;
-
-  v_jnt << 0, 0, 0, 0;
-
-  KDL::Frame frame_to_tip;
-  
-  manipulator_ = Manipulator();
-  JointType jnt_type;
-  JointLimits jnt_lim;
-  
-  for(int itr = 0; itr < manip_chain.getNrOfSegments(); itr++)
-  {
-    KDL::Segment chain_seg = manip_chain.getSegment(itr);
-    std::string seg_name = chain_seg.getName();
-    KDL::Joint jnt = chain_seg.getJoint();
-    KDL::RigidBodyInertia inertia_prop = chain_seg.getInertia();
-    KDL::RotationalInertia rot_inertia = inertia_prop.getRotationalInertia();
-
-    Eigen::Matrix3d rot_inertia_mat;
-    
-    frame_to_tip = chain_seg.getFrameToTip();
-
-    urdf::JointSharedPtr jnt_ptr(jnt_list[jnt.getName()]);
-
-    for(int r_itr = 0; r_itr < 3; r_itr++)
-    {
-      for(int c_itr = 0; c_itr < 3; c_itr++)
-      {
-        t_tip(r_itr, c_itr) = frame_to_tip.M.data[(r_itr * 3) + c_itr];
-        rot_inertia_mat(r_itr, c_itr) = rot_inertia.data[(r_itr * 3) + c_itr];
-      }
-
-      t_tip(r_itr, 3) = frame_to_tip.p.data[r_itr];
-
-      p_jnt(r_itr) = jnt.JointOrigin().data[r_itr];
-      v_jnt(r_itr) = jnt.JointAxis().data[r_itr];
-    }
-
-    Eigen::Vector4d w_p_jnt = t_ref * p_jnt;
-    Eigen::Vector4d w_v_jnt = t_ref * v_jnt;
-
-    t_ref = t_ref * t_tip;
-
-    if(jnt.getType() == KDL::Joint::JointType::RotAxis)
-    {
-      jnt_lim.upper_limit_ = jnt_ptr->limits->upper;
-      jnt_lim.lower_limit_ = jnt_ptr->limits->lower;
-
-      jnt_type = JointType::Revolute;
-      manipulator_.addJoint(
-          jnt_type, jnt.getName(), w_v_jnt, w_p_jnt, jnt_lim, t_ref);
-    }
-    else
-    {
-      if(itr < (manip_chain.getNrOfSegments()-1))
-      {
-        manipulator_.modifyEndJointTipPose(t_ref);
-      }
-    }
-  }
-
-  return true;
-}
-
 Manipulator KinematicsSolver::getManipulator(void)
 {
   return manipulator_;
@@ -713,8 +601,8 @@ ErrorCodes KinematicsSolver::getMotionPlan(
     const Eigen::VectorXd &init_jnt_values,
     const Eigen::Matrix4d &g_i,
     const Eigen::Matrix4d &g_f,
-    trajectory_msgs::JointTrajectory &jnt_trajectory)
-    //std::vector<Eigen::VectorXd> &jnt_values_seq)
+    //trajectory_msgs::JointTrajectory &jnt_trajectory);
+    std::vector<Eigen::VectorXd> &jnt_values_seq)
 {
   Eigen::VectorXd joint_values_inc;
   Eigen::VectorXd current_joint_values;
@@ -810,9 +698,9 @@ ErrorCodes KinematicsSolver::getMotionPlan(
 
   Eigen::VectorXd joint_values_delta;
 
-  trajectory_msgs::JointTrajectoryPoint jnt_trajectory_point;
-  jnt_trajectory.joint_names = manipulator_.joint_names_;
-  jnt_trajectory.points.clear();
+  //trajectory_msgs::JointTrajectoryPoint jnt_trajectory_point;
+  //jnt_trajectory.joint_names = manipulator_.joint_names_;
+  //jnt_trajectory.points.clear();
 
   std::vector<double> jnt_values(7,0);
 
@@ -946,10 +834,10 @@ determine_next_angles:
 
     }
 
-    jnt_trajectory_point.positions = jnt_values;
-    jnt_trajectory.points.push_back(jnt_trajectory_point);
+    //jnt_trajectory_point.positions = jnt_values;
+    //jnt_trajectory.points.push_back(jnt_trajectory_point);
 
-    //jnt_values_seq.push_back(next_joint_values);
+    jnt_values_seq.push_back(next_joint_values);
 
 #if DEBUG
     if(!(log_folder_error || log_file_error))

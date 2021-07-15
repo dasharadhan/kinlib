@@ -14,11 +14,6 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 
-//#include <ros/ros.h>
-#include <trajectory_msgs/JointTrajectory.h>
-#include <kdl_parser/kdl_parser.hpp>
-#include <urdf/model.h>
-
 #include "kinlib.h"
 #include "manipulator.h"
 #include "DualQuat.h"
@@ -218,17 +213,6 @@ class KinematicsSolver
     KinematicsSolver(Manipulator manip);
 
     /*!
-      \brief    To load Manipulator properties from parameter server
-
-      \param    robot_desc_file   Robot description file path
-      \param    base_link_name    Name of base link of manipulator
-      \param    tip_link_name     Name of tip link of manipulator
-    */
-    bool loadManipulator( std::string robot_desc_file,
-                          std::string base_link_name,
-                          std::string tip_link_name);
-
-    /*!
       \brief    To get Manipulator object of the kinematic solver
     */
     Manipulator getManipulator(void);
@@ -290,15 +274,15 @@ class KinematicsSolver
       \param    init_jnt_values     Initial joint values of manipulator
       \param    g_i                 Initial end-effector configuration
       \param    g_f                 Final end-effector configuration required
-      \param    jnt_trajectory      Variable to store motion plan
+      \param    jnt_values_seq      Variable to store motion plan
 
       \return   Operation status
     */
     ErrorCodes getMotionPlan( const Eigen::VectorXd &init_jnt_values,
                               const Eigen::Matrix4d &g_i,
                               const Eigen::Matrix4d &g_f,
-                              trajectory_msgs::JointTrajectory &jnt_trajectory);
-                              //std::vector<Eigen::VectorXd> &jnt_angle_seq);
+                              //trajectory_msgs::JointTrajectory &jnt_trajectory);
+                              std::vector<Eigen::VectorXd> &jnt_values_seq);
 
   private:
     /*!
