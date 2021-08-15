@@ -972,4 +972,276 @@ determine_next_angles:
   return ErrorCodes::OPERATION_SUCCESS;
 }
 
+ErrorCodes KinematicsSolver::getMotionPlan(
+    const Eigen::VectorXd &init_jnt_values,
+    const Eigen::Matrix4d &g_i,
+    const Eigen::Matrix4d &g_f,
+    trajectory_msgs::JointTrajectory &jnt_trajectory,
+    std::vector<geometry_msgs::Pose> &ee_trajectory)
+{
+  Eigen::VectorXd joint_values_inc;
+  Eigen::VectorXd current_joint_values;
+  Eigen::VectorXd next_joint_values;
+  
+#if DEBUG
+
+  std::time_t now = std::time(0);
+  std::tm* timestamp = std::localtime(&now);
+
+  char timestamp_char[100];
+  strftime(timestamp_char, 100, timestamp_str.c_str(), timestamp);
+
+  std::string current_log_folder(timestamp_char);
+  std::string log_dir_path = log_dir + "/" + current_log_folder;
+
+  std::string timestamp_str_val(timestamp_char);
+  std::string log_file_path = log_dir_path + "/" + timestamp_str_val 
+                            + "_motion_plan.csv";
+
+  std::ofstream log_file;
+
+  if(mkdir(log_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+  {
+    if(errno != EEXIST)
+    {
+      std::cout << "Error : Cannot create log folders\n";
+      std::cout << "Error " << errno << ": " << strerror(errno);
+      std::cout.flush();
+      log_folder_error = true;
+    }
+  }
+
+  if(!log_folder_error)
+  {
+    if(mkdir(log_dir_path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+    {
+      if(errno != EEXIST)
+      {
+        std::cout << "Error : Cannot create log folders\n";
+        std::cout << "Error " << errno << ": " << strerror(errno);
+        std::cout.flush();
+        log_folder_error = true;
+      }
+    }
+    
+    if(!log_folder_error)
+    {
+      log_file.open(log_file_path, std::ofstream::out | std::ofstream::app);
+
+      if(!log_file.is_open())
+      {
+        log_file_error = true;
+
+        std::cout << "Error : Cannot open log file\n";
+        std::cout.flush();
+      }
+    }
+  }
+
+#endif
+
+  double pos_dist, rot_dist;
+
+  current_joint_values = init_jnt_values;
+
+  unsigned long int itr_cnt = 0;
+
+  eigen_ext::DualQuat dq_i(g_i);
+  eigen_ext::DualQuat dq_f(g_f);
+
+  Eigen::Matrix4d g_current;
+
+  eigen_ext::DualQuat dq_current = dq_i;
+  eigen_ext::DualQuat dq_next;
+
+  pos_dist = positionDistance(g_i, g_f);
+  rot_dist = rotationDistance(dq_i, dq_f);
+
+  Eigen::MatrixXd joint_limits;
+  joint_limits.resize(manipulator_.joint_count_, 2);
+  for(int i = 0; i < manipulator_.joint_count_; i++)
+  {
+    joint_limits(i,0) = manipulator_.joint_limits_[i].lower_limit_;
+    joint_limits(i,1) = manipulator_.joint_limits_[i].upper_limit_;
+  }
+
+  double beta = 0.5;
+  double step_size = beta;
+
+  double tau = 0.01;
+  double tau_i = tau;
+
+  Eigen::VectorXd joint_values_delta;
+
+  trajectory_msgs::JointTrajectoryPoint jnt_trajectory_point;
+  jnt_trajectory.joint_names = manipulator_.joint_names_;
+  jnt_trajectory.points.clear();
+  
+  ee_trajectory.clear();
+
+  std::vector<double> jnt_values(7,0);
+  
+  Eigen::Isometry3d iso_pose;
+  geometry_msgs::Pose geo_pose;
+
+  while((!(pos_dist < 0.0001 && rot_dist < 0.001)) && (itr_cnt < 10000))
+  {
+
+
+    /*
+    if(pos_dist < 0.01 && rot_dist < 0.1)
+    {
+      tau = 0.25;
+    }
+    else if(pos_dist < 0.001 && rot_dist < 0.1)
+    {
+      tau = 0.5;
+    }
+    else
+    {
+      tau = tau_i;
+    }
+    */
+
+    itr_cnt++;
+
+    step_size = beta;
+
+    dq_next = eigen_ext::DualQuat::dualQuatInterpolation(
+        dq_current, dq_f, tau);
+
+    if(tau_i < 1)
+    {
+      Eigen::Matrix4d g_next_temp = dq_next.getTransform();
+
+      double pos_dist_temp = positionDistance(g_current, g_next_temp);
+
+      if(pos_dist_temp < 0.01)
+      {
+        tau = tau + 0.01;
+
+        dq_next = eigen_ext::DualQuat::dualQuatInterpolation(
+            dq_current, dq_f, tau);
+      }
+    }
+
+    getResolvedMotionRateControlStep(
+        dq_current, dq_next, current_joint_values, joint_values_inc);
+
+    if(joint_values_inc.hasNaN())
+    {
+      //jnt_values_seq.clear();
+      std::cout << "\nJoint increments are not finite!\n";
+      std::cout.flush();
+
+#if DEBUG
+      if(!(log_folder_error || log_file_error))
+      {
+        for(int temp_itr = 0; temp_itr < joint_values_inc.rows(); temp_itr++)
+        {
+          log_file << 1000 << ',';
+        }
+        log_file << '\n';
+
+        log_file << joint_values_inc << '\n';
+        
+        log_file.flush();
+      }
+#endif
+
+      return ErrorCodes::OPERATION_FAILURE;
+    }
+
+    int joint_limit_id = 0;
+
+determine_next_angles:
+
+    joint_limit_id = 0;
+
+    joint_values_delta = joint_values_inc * step_size;
+
+    next_joint_values = current_joint_values + joint_values_delta;
+
+    // Check if joint limits are satisfied
+    for(int i = 0; i < manipulator_.joint_count_; i++)
+    {
+
+      jnt_values[i] = next_joint_values(i);
+
+      if( (next_joint_values(i) > joint_limits(i,0)) &&
+          (next_joint_values(i) < joint_limits(i,1)))
+      {
+        continue;
+      }
+      else
+      {
+        joint_limit_id = i + 1;
+
+        double max_val = fabs(joint_values_delta(0));
+
+        for(int j = 1; j < manipulator_.joint_count_; j++)
+        {
+          if(fabs(joint_values_delta(j)) > max_val)
+          {
+            max_val = fabs(joint_values_delta(j));
+          }
+        }
+
+        if(max_val <= 0.0001)
+        {
+          std::cout << "\nJoint " << joint_limit_id << " limits reached!\n";
+          std::cout << next_joint_values.transpose().format(PrintFormat)<<'\n';
+          std::cout.flush();
+
+#if DEBUG
+          if(!(log_folder_error || log_file_error))
+          {
+            for(int temp_itr = 0; temp_itr < manipulator_.joint_count_; temp_itr++)
+            {
+              log_file << -1000 << ',';
+            }
+            log_file << '\n';
+
+            log_file.flush();
+          }
+#endif
+          return ErrorCodes::JOINT_LIMIT_ERROR;
+        }
+
+        step_size = step_size / 10;
+        goto determine_next_angles;
+      }
+
+    }
+
+    jnt_trajectory_point.positions = jnt_values;
+    jnt_trajectory.points.push_back(jnt_trajectory_point);
+
+    //jnt_values_seq.push_back(next_joint_values);
+
+#if DEBUG
+    if(!(log_folder_error || log_file_error))
+    {
+      log_file << next_joint_values.transpose().format(CSVFormat) << '\n';
+      log_file.flush();
+    }
+#endif
+
+    getFK(next_joint_values, g_current);
+    
+    iso_pose.matrix() = g_current;
+    tf::poseEigenToMsg(iso_pose, geo_pose);
+    ee_trajectory.push_back(geo_pose);
+
+    dq_current = eigen_ext::DualQuat::transformationToDualQuat(g_current);
+
+    current_joint_values = next_joint_values;
+
+    pos_dist = positionDistance(g_current, g_f);
+    rot_dist = rotationDistance(dq_current, dq_f);
+  }
+
+  return ErrorCodes::OPERATION_SUCCESS;
+}
+
 } // namespace kinlib

@@ -16,6 +16,8 @@
 
 //#include <ros/ros.h>
 #include <trajectory_msgs/JointTrajectory.h>
+#include <geometry_msgs/Pose.h>
+#include <eigen_conversions/eigen_msg.h>
 #include <kdl_parser/kdl_parser.hpp>
 #include <urdf/model.h>
 
@@ -299,6 +301,27 @@ class KinematicsSolver
                               const Eigen::Matrix4d &g_f,
                               trajectory_msgs::JointTrajectory &jnt_trajectory);
                               //std::vector<Eigen::VectorXd> &jnt_angle_seq);
+
+    /*!
+      \brief    Get motion plan for manipulator
+
+      \details  This function solves for a motion plan based on the given
+                initial joint angles and final end-effector configuration using
+                Screw Linear Interpolation 
+
+      \param    init_jnt_values     Initial joint values of manipulator
+      \param    g_i                 Initial end-effector configuration
+      \param    g_f                 Final end-effector configuration required
+      \param    jnt_trajectory      Variable to store motion plan
+      \param    ee_trajectory       Variable to store end effector trajectory
+
+      \return   Operation status
+    */
+    ErrorCodes getMotionPlan( const Eigen::VectorXd &init_jnt_values,
+                              const Eigen::Matrix4d &g_i,
+                              const Eigen::Matrix4d &g_f,
+                              trajectory_msgs::JointTrajectory &jnt_trajectory,
+                              std::vector<geometry_msgs::Pose> &ee_trajectory);
 
   private:
     /*!

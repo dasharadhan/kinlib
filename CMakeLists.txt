@@ -18,6 +18,7 @@ find_package(
   catkin REQUIRED COMPONENTS
     roscpp
     std_msgs
+    geometry_msgs
     trajectory_msgs
     urdf
     kdl_parser
@@ -31,6 +32,7 @@ catkin_package(
   CATKIN_DEPENDS
     roscpp
     std_msgs
+    geometry_msgs
     trajectory_msgs
     urdf
     kdl_parser
