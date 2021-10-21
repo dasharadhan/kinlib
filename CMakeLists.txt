@@ -22,6 +22,7 @@ find_package(
     trajectory_msgs
     urdf
     kdl_parser
+    eigen_conversions
 )
 
 find_package(Boost REQUIRED system filesystem)
@@ -36,6 +37,7 @@ catkin_package(
     trajectory_msgs
     urdf
     kdl_parser
+    eigen_conversions
   DEPENDS
     EIGEN3
     Boost
@@ -62,4 +64,7 @@ if(CATKIN_ENABLE_TESTING)
   include_directories(${KINLIB_TEST_INCLUDE_DIR})
   catkin_add_gtest(kinlib_test test/kinlib_test.cpp)
   target_link_libraries(kinlib_test ${PROJECT_NAME} ${catkin_LIBRARIES} armadillo)
+  
+  add_executable(kinlib_optime_test test/kinlib_optime_test.cpp)
+  target_link_libraries(kinlib_optime_test ${PROJECT_NAME} ${catkin_LIBRARIES} armadillo)
 endif()
