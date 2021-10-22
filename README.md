@@ -7,4 +7,4 @@ This library contains implementations of kinematic algorithms for serial manipul
 * [Eigen](http://eigen.tuxfamily.org)
 
 ## Documentation:
-The code is documented using [Doxygen](www.doxygen.org) style comments
+The code is documented using [Doxygen](https://www.doxygen.org) style comments
