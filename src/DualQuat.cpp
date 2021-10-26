@@ -250,7 +250,20 @@ DualQuat DualQuat::raiseToPower(const double &pwr)
   Eigen::Vector4d real_part = getRealPartVec();
   Eigen::Vector4d dual_part = getDualPartVec();
 
-  double theta = 2 * std::acos(real_part(0));
+  double theta;
+  
+  if(real_part(0) <= -1.0)
+  {
+    theta = M_PI;
+  }
+  else if(real_part(0) >= 1.0)
+  {
+    theta = 0;
+  }
+  else
+  {
+    theta = 2 * std::acos(real_part(0));  
+  }
 
   // Check if angle is correct
   assert(!std::isnan(theta));
