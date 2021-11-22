@@ -9,6 +9,9 @@
 
 Eigen::IOFormat PrintFormat(4,0,", ","\n");
 
+#define TAU_MAX_VAL     0.1
+#define TAU_BRAKE_VAL   0.9
+
 #if DEBUG
 
 #include "eigen_matrix_formatting.h"
@@ -39,6 +42,78 @@ bool log_plan_request_error = false;
 
 namespace kinlib
 {
+class Polynomial
+{
+  private:
+    double brake_start;
+    double max_amp;
+    
+    Eigen::Matrix3d mat;
+    Eigen::Vector3d coeff;
+    Eigen::Vector3d r_val;
+  
+  public:
+    Polynomial()
+    {
+      brake_start = TAU_BRAKE_VAL;
+      max_amp = TAU_MAX_VAL;
+      
+      mat(0,0) = std::pow(brake_start, 3);
+      mat(0,1) = std::pow(brake_start, 4);
+      mat(0,2) = std::pow(brake_start, 5);
+
+      mat(1,0) = 3 * std::pow(brake_start, 2);
+      mat(1,1) = 4 * std::pow(brake_start, 3);
+      mat(1,2) = 5 * std::pow(brake_start, 4);
+
+      mat(2,0) = 6 * brake_start;
+      mat(2,1) = 12 * std::pow(brake_start, 2);
+      mat(2,2) = 20 * std::pow(brake_start, 3);
+      
+      r_val(0) = max_amp;
+      r_val(1) = 0;
+      r_val(2) = 0;
+      
+      coeff = mat.inverse() * r_val;
+    }
+
+    Polynomial(double tau_brake, double tau_max)
+    {
+      brake_start = tau_brake;
+      max_amp = tau_max;
+      
+      mat(0,0) = std::pow(brake_start, 3);
+      mat(0,1) = std::pow(brake_start, 4);
+      mat(0,2) = std::pow(brake_start, 5);
+
+      mat(1,0) = 3 * std::pow(brake_start, 2);
+      mat(1,1) = 4 * std::pow(brake_start, 3);
+      mat(1,2) = 5 * std::pow(brake_start, 4);
+
+      mat(2,0) = 6 * brake_start;
+      mat(2,1) = 12 * std::pow(brake_start, 2);
+      mat(2,2) = 20 * std::pow(brake_start, 3);
+      
+      r_val(0) = max_amp;
+      r_val(1) = 0;
+      r_val(2) = 0;
+      
+      coeff = mat.inverse() * r_val;
+    }
+    
+    double getValue(double t)
+    {
+      if(t >= brake_start)
+      {
+        return max_amp;
+      }
+      
+      return ((coeff(0) * std::pow(t, 3)) +
+              (coeff(1) * std::pow(t, 4)) +
+              (coeff(2) * std::pow(t, 5)));
+    }
+};
+
 double positionDistance(const Eigen::Matrix4d &t1, const Eigen::Matrix4d &t2)
 {
   Eigen::Vector4d p_delta = t1.col(3) - t2.col(3);
@@ -805,8 +880,13 @@ ErrorCodes KinematicsSolver::getMotionPlan(
   double beta = 0.5;
   double step_size = beta;
 
-  double tau = 0.01;
-  double tau_i = tau;
+  double tau = 0.001;
+  double tau_i = 0.01;
+
+  double tau_max = 0.1;
+  double tau_break = 0.9;
+
+  Polynomial tau_f(tau_break, tau_max);
 
   Eigen::VectorXd joint_values_delta;
 
@@ -816,24 +896,22 @@ ErrorCodes KinematicsSolver::getMotionPlan(
 
   std::vector<double> jnt_values(7,0);
 
+  Eigen::Vector3d omega;
+  double theta;
+  double h;
+  Eigen::Vector3d l;
+  ScrewMotionType screw_type;
+  
+  Eigen::Vector3d curr_omega;
+  double curr_theta;
+  double curr_h;
+  Eigen::Vector3d curr_l;
+  ScrewMotionType curr_screw_type;
+
+  kinlib::getScrewParameters(g_i, g_f, omega, theta, h, l, screw_type);
+
   while((!(pos_dist < 0.0001 && rot_dist < 0.001)) && (itr_cnt < 10000))
   {
-
-
-    /*
-    if(pos_dist < 0.01 && rot_dist < 0.1)
-    {
-      tau = 0.25;
-    }
-    else if(pos_dist < 0.001 && rot_dist < 0.1)
-    {
-      tau = 0.5;
-    }
-    else
-    {
-      tau = tau_i;
-    }
-    */
 
     itr_cnt++;
 
@@ -842,18 +920,18 @@ ErrorCodes KinematicsSolver::getMotionPlan(
     dq_next = eigen_ext::DualQuat::dualQuatInterpolation(
         dq_current, dq_f, tau);
 
-    if(tau_i < 1)
+    if(tau < tau_max)
     {
       Eigen::Matrix4d g_next_temp = dq_next.getTransform();
 
-      double pos_dist_temp = positionDistance(g_current, g_next_temp);
+      kinlib::getScrewParameters(
+          g_next_temp, g_f, curr_omega, curr_theta, curr_h, curr_l, curr_screw_type);
 
-      if(pos_dist_temp < 0.01)
+      if(theta != 0)
       {
-        tau = tau + 0.01;
-
-        dq_next = eigen_ext::DualQuat::dualQuatInterpolation(
-            dq_current, dq_f, tau);
+        double motion_dist = std::abs(curr_theta / theta);
+        
+        tau = tau_f.getValue(motion_dist) + tau_i;
       }
     }
 
@@ -921,7 +999,7 @@ determine_next_angles:
 
         if(max_val <= 0.0001)
         {
-          std::cout << "\nJoint " << joint_limit_id << " limits reached!\n";
+          std::cout << "\nJoint " << manipulator_.joint_names_[i] << " limits reached!\n";
           std::cout << next_joint_values.transpose().format(PrintFormat)<<'\n';
           std::cout.flush();
 
@@ -1068,8 +1146,13 @@ ErrorCodes KinematicsSolver::getMotionPlan(
   double beta = 0.5;
   double step_size = beta;
 
-  double tau = 0.01;
-  double tau_i = tau;
+  double tau = 0.001;
+  double tau_i = 0.01;
+
+  double tau_max = 0.1;
+  double tau_break = 0.9;
+
+  Polynomial tau_f(tau_break, tau_max);
 
   Eigen::VectorXd joint_values_delta;
 
@@ -1084,24 +1167,22 @@ ErrorCodes KinematicsSolver::getMotionPlan(
   Eigen::Isometry3d iso_pose;
   geometry_msgs::Pose geo_pose;
 
+  Eigen::Vector3d omega;
+  double theta;
+  double h;
+  Eigen::Vector3d l;
+  ScrewMotionType screw_type;
+  
+  Eigen::Vector3d curr_omega;
+  double curr_theta;
+  double curr_h;
+  Eigen::Vector3d curr_l;
+  ScrewMotionType curr_screw_type;
+
+  kinlib::getScrewParameters(g_i, g_f, omega, theta, h, l, screw_type);
+
   while((!(pos_dist < 0.0001 && rot_dist < 0.001)) && (itr_cnt < 10000))
   {
-
-
-    /*
-    if(pos_dist < 0.01 && rot_dist < 0.1)
-    {
-      tau = 0.25;
-    }
-    else if(pos_dist < 0.001 && rot_dist < 0.1)
-    {
-      tau = 0.5;
-    }
-    else
-    {
-      tau = tau_i;
-    }
-    */
 
     itr_cnt++;
 
@@ -1110,18 +1191,18 @@ ErrorCodes KinematicsSolver::getMotionPlan(
     dq_next = eigen_ext::DualQuat::dualQuatInterpolation(
         dq_current, dq_f, tau);
 
-    if(tau_i < 1)
+    if(tau < tau_max)
     {
       Eigen::Matrix4d g_next_temp = dq_next.getTransform();
 
-      double pos_dist_temp = positionDistance(g_current, g_next_temp);
+      kinlib::getScrewParameters(
+          g_next_temp, g_f, curr_omega, curr_theta, curr_h, curr_l, curr_screw_type);
 
-      if(pos_dist_temp < 0.01)
+      if(theta != 0)
       {
-        tau = tau + 0.01;
-
-        dq_next = eigen_ext::DualQuat::dualQuatInterpolation(
-            dq_current, dq_f, tau);
+        double motion_dist = std::abs(curr_theta / theta);
+        
+        tau = tau_f.getValue(motion_dist) + tau_i;
       }
     }
 
@@ -1189,7 +1270,7 @@ determine_next_angles:
 
         if(max_val <= 0.0001)
         {
-          std::cout << "\nJoint " << joint_limit_id << " limits reached!\n";
+          std::cout << "\nJoint " << manipulator_.joint_names_[i] << " limits reached!\n";
           std::cout << next_joint_values.transpose().format(PrintFormat)<<'\n';
           std::cout.flush();
 
