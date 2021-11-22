@@ -15,6 +15,7 @@ class KinlibTest : public testing::Test
       urdf_file_path_ = (res_dir / "baxter.urdf").string();
       jnt_ang_file_path_ = (res_dir / "joint_angles.csv").string();
       matlab_fk_results_path_ = (res_dir / "matlab_fk_results.csv").string();
+      motion_plan_file_path_ = (res_dir / "motion_plan.csv").string();
       screw_param_check_g_i_path_ = (res_dir / "screw_param_check_g_i.csv").string();
       screw_param_check_g_f_path_ = (res_dir / "screw_param_check_g_f.csv").string();
       screw_param_results_path_ = (res_dir / "screw_params.csv").string();
@@ -34,6 +35,7 @@ class KinlibTest : public testing::Test
     std::string urdf_file_path_;
     std::string jnt_ang_file_path_;
     std::string matlab_fk_results_path_;
+    std::string motion_plan_file_path_;
     std::string screw_param_check_g_i_path_;
     std::string screw_param_check_g_f_path_;
     std::string screw_param_results_path_;
@@ -332,6 +334,70 @@ TEST_F(KinlibTest, GetScrewParamCheck)
       i+1 << '\n';
   }
 
+}
+
+TEST_F(KinlibTest, ScLERPMotionPlannerCheck)
+{
+  // Load Manipulator Properties
+  EXPECT_EQ(
+      kin_solver_.loadManipulator(urdf_file_path_, "base", "left_gripper_base"),
+      true);
+
+  arma::Mat<double> motion_plan;
+  motion_plan.load(motion_plan_file_path_);
+
+  // Initial configuration of manipulator
+  Eigen::VectorXd init_jnt_val(7);
+  //init_jnt_val << 0.696,-0.691,-0.692,2.044,-2.045,0.819,1.430;
+  //init_jnt_val << -0.049,-0.758,0.023,1.829,-2.333,1.211,1.100;
+  init_jnt_val << 0.828,-0.588,-0.370,1.837,1.511,-1.186,-1.913;
+
+  Eigen::Matrix4d init_ee_g;
+  ASSERT_EQ(kin_solver_.getFK(init_jnt_val, init_ee_g),
+            kinlib::ErrorCodes::OPERATION_SUCCESS);
+
+  Eigen::Matrix4d goal_ee_g;
+
+  bool res;
+
+  for(int i = 0; i < (motion_plan.n_rows/4); i++)
+  {
+    trajectory_msgs::JointTrajectory motion_plan_result;
+    std::vector<geometry_msgs::Pose> ee_trajectory;
+
+    for(int j = (i*4), itr = 0; j < (i*4)+4; j++, itr++)
+    {
+      for(int k = 0; k < 4; k++)
+      {
+        goal_ee_g(itr, k) = motion_plan(j,k);
+      }
+    }
+
+    res = kin_solver_.getMotionPlan(
+        init_jnt_val, init_ee_g, goal_ee_g, motion_plan_result);
+
+    unsigned int len_1 = motion_plan_result.points.size();
+
+    std::cout << "\nGoal Pose           : " << i+1
+              << "\nTrajectory Length   : " << motion_plan_result.points.size();
+
+    res = kin_solver_.getMotionPlan(
+        init_jnt_val, init_ee_g, goal_ee_g, motion_plan_result, ee_trajectory);
+
+    unsigned int len_2 = motion_plan_result.points.size();
+
+    ASSERT_EQ(len_1, len_2);
+    ASSERT_EQ(res, kinlib::ErrorCodes::OPERATION_SUCCESS);
+
+    init_ee_g = goal_ee_g;
+    
+    for(int j = 0; j < 7; j++)
+    {
+      init_jnt_val(j) = motion_plan_result.points.back().positions[j];
+    }
+  }
+
+  std::cout << '\n';
 }
 
 TEST_F(KinlibTest, GetScrewSegmentsCheck)
