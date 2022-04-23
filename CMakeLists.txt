@@ -60,6 +60,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   ${CMAKE_CURRENT_LIST_DIR}/src
 )
 
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+
 if(CATKIN_ENABLE_TESTING)
   include_directories(${KINLIB_TEST_INCLUDE_DIR})
   catkin_add_gtest(kinlib_test test/kinlib_test.cpp)
