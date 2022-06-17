@@ -30,6 +30,8 @@ find_package(Boost REQUIRED system filesystem)
 catkin_package(
   INCLUDE_DIRS
     include
+  LIBRARIES
+    ${PROJECT_NAME}
   CATKIN_DEPENDS
     roscpp
     std_msgs
@@ -43,12 +45,6 @@ catkin_package(
     Boost
 )
 
-include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIRS}
-)
-
 add_library(${PROJECT_NAME}
   src/DualQuat.cpp
   src/manipulator.cpp
@@ -56,11 +52,21 @@ add_library(${PROJECT_NAME}
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
-  ${CMAKE_CURRENT_LIST_DIR}/include
-  ${CMAKE_CURRENT_LIST_DIR}/src
+  include
+  ${catkin_INCLUDE_DIRS}
 )
 
 target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES})
+
+install(TARGETS ${PROJECT_NAME}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)
 
 if(CATKIN_ENABLE_TESTING)
   include_directories(${KINLIB_TEST_INCLUDE_DIR})
