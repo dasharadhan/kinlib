@@ -32,6 +32,7 @@ add_library(${PROJECT_NAME}
   src/DualQuat.cpp
   src/manipulator.cpp
   src/kinlib_kinematics.cpp
+  src/motion_planning.cpp
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

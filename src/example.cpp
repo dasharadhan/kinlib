@@ -3,7 +3,9 @@
 #include <array>
 #include <kinlib/kinlib_kinematics.h>
 #include <kinlib/kinlib_resources.h>
+#include <kinlib/motion_planning.h>
 
+/*
 Eigen::MatrixXd readCSV(std::string file, int rows, int cols)
 {
   std::ifstream in(file);
@@ -41,17 +43,42 @@ Eigen::MatrixXd readCSV(std::string file, int rows, int cols)
   }
   return res;
 }
+*/
+
+template<typename M>
+M loadCSV (const std::string & path) {
+    std::ifstream indata;
+    indata.open(path);
+    std::string line;
+    std::vector<double> values;
+    uint rows = 0;
+    while (std::getline(indata, line)) {
+        std::stringstream lineStream(line);
+        std::string cell;
+        while (std::getline(lineStream, cell, ',')) {
+            values.push_back(std::stod(cell));
+        }
+        ++rows;
+    }
+    return Eigen::Map<const Eigen::Matrix<typename M::Scalar, M::RowsAtCompileTime, M::ColsAtCompileTime, Eigen::RowMajor>>(values.data(), rows, values.size()/rows);
+}
 
 int main()
 {
+  Eigen::IOFormat CleanFmt(Eigen::FullPrecision,0,"\t","\n");
   kinlib::Manipulator baxter_manipulator;
   
   std::array<std::string, 7> joint_names{"S0", "S1", "E0", "E1", "W0", "W1", "W2"};
   
-  Eigen::MatrixXd joint_axes = readCSV(std::string(KINLIB_RESOURCES_DIR) + "baxter_joint_axes.csv", 3, 7);
-  Eigen::MatrixXd joint_q = readCSV(std::string(KINLIB_RESOURCES_DIR) + "baxter_joint_q.csv", 3, 7);
-  Eigen::MatrixXd joint_limits = readCSV(std::string(KINLIB_RESOURCES_DIR) + "baxter_joint_limits.csv", 7, 3);
-  Eigen::MatrixXd gst_0 = readCSV(std::string(KINLIB_RESOURCES_DIR) + "baxter_gst0.csv", 4, 4);
+  // Eigen::MatrixXd joint_axes = readCSV(std::string(KINLIB_RESOURCES_DIR) + "baxter_joint_axes.csv", 3, 7);
+  // Eigen::MatrixXd joint_q = readCSV(std::string(KINLIB_RESOURCES_DIR) + "baxter_joint_q.csv", 3, 7);
+  // Eigen::MatrixXd joint_limits = readCSV(std::string(KINLIB_RESOURCES_DIR) + "baxter_joint_limits.csv", 7, 3);
+  // Eigen::MatrixXd gst_0 = readCSV(std::string(KINLIB_RESOURCES_DIR) + "baxter_gst0.csv", 4, 4);
+
+  Eigen::MatrixXd joint_axes = loadCSV<Eigen::MatrixXd>(std::string(KINLIB_RESOURCES_DIR) + "baxter_joint_axes.csv");
+  Eigen::MatrixXd joint_q = loadCSV<Eigen::MatrixXd>(std::string(KINLIB_RESOURCES_DIR) + "baxter_joint_q.csv");
+  Eigen::MatrixXd joint_limits = loadCSV<Eigen::MatrixXd>(std::string(KINLIB_RESOURCES_DIR) + "baxter_joint_limits.csv");
+  Eigen::MatrixXd gst_0 = loadCSV<Eigen::MatrixXd>(std::string(KINLIB_RESOURCES_DIR) + "baxter_gst0.csv");
   
   std::cout << "Joint Axes :\n" << joint_axes << "\n\n";
   std::cout << "Joint Q :\n" << joint_q << "\n\n";
@@ -80,8 +107,13 @@ int main()
   kinlib::KinematicsSolver kin_solver(baxter_manipulator);
   
   // Compare FK results with MATLAB results for a set of random joint angles
-  Eigen::MatrixXd rand_joint_angles = readCSV(std::string(KINLIB_RESOURCES_DIR) + "joint_angles.csv", 485, 7);
-  Eigen::MatrixXd matlab_fk_results = readCSV(std::string(KINLIB_RESOURCES_DIR) + "matlab_fk_results.csv", 1940, 4);
+  // Eigen::MatrixXd rand_joint_angles = readCSV(std::string(KINLIB_RESOURCES_DIR) + "joint_angles.csv", 485, 7);
+  // Eigen::MatrixXd matlab_fk_results = readCSV(std::string(KINLIB_RESOURCES_DIR) + "matlab_fk_results.csv", 1940, 4);
+  Eigen::MatrixXd rand_joint_angles = loadCSV<Eigen::MatrixXd>(std::string(KINLIB_RESOURCES_DIR) + "joint_angles.csv");
+  Eigen::MatrixXd matlab_fk_results = loadCSV<Eigen::MatrixXd>(std::string(KINLIB_RESOURCES_DIR) + "matlab_fk_results.csv");
+
+  std::vector<Eigen::Matrix4d> ee_traj;
+  kin_solver.getEndEffectorTrajectory(rand_joint_angles, ee_traj);
   
   for(int i = 0; i < rand_joint_angles.rows(); i++)
   {
@@ -97,6 +129,12 @@ int main()
       for(int k = 0; k < 4; k++)
       {
         if((matlab_fk_results((i*4)+j,k) - ee_g(j,k)) > 1.0e-5)
+        {
+          g_check = false;
+          break;
+        }
+
+        if((matlab_fk_results((i*4)+j,k) - ee_traj[i](j,k)) > 1.0e-5)
         {
           g_check = false;
           break;
@@ -133,7 +171,8 @@ int main()
   kin_solver.getFK(init_jnt_val, init_ee_g);
   
   std::vector<Eigen::VectorXd> motion_plan_result;
-  kinlib::ErrorCodes plan_res = kin_solver.getMotionPlan(init_jnt_val, init_ee_g, goal_ee_g, motion_plan_result);
+  kinlib::MotionPlanResult plan_info;
+  kinlib::ErrorCodes plan_res = kin_solver.getMotionPlan(init_jnt_val, init_ee_g, goal_ee_g, motion_plan_result, plan_info);
   
   if(plan_res == kinlib::ErrorCodes::OPERATION_SUCCESS)
   {
@@ -144,5 +183,87 @@ int main()
   {
     std::cout << "[ ERROR ] Motion plan computation failed!\n";
   }
+
+  // User Guided Motion Planner
+  Eigen::MatrixXd recorded_demo = loadCSV<Eigen::MatrixXd>(std::string(KINLIB_RESOURCES_DIR) + "Demonstrations/ScoopAndPour1/ee_trajectory.csv");
+  Eigen::MatrixXd object_poses = loadCSV<Eigen::MatrixXd>(std::string(KINLIB_RESOURCES_DIR) + "Demonstrations/ScoopAndPour1/object_poses.csv");
+
+  std::vector<Eigen::Matrix4d> recorded_ee_traj;
+  std::vector<Eigen::Matrix4d> obj_poses;
+
+  for(int i = 0; i < recorded_demo.rows()/4; i++)
+  {
+    Eigen::Matrix4d g = recorded_demo.block<4,4>((i*4),0);
+    recorded_ee_traj.push_back(g);
+  }
+
+  for(int i = 0; i < object_poses.rows()/4; i++)
+  {
+    Eigen::Matrix4d g = object_poses.block<4,4>((i*4),0);
+    obj_poses.push_back(g);
+  }
+
+  kinlib::Demonstration demo = kinlib::saveDemonstration(recorded_ee_traj,obj_poses);
   
+  // Guiding poses
+  for(int i = 0; i < demo.guiding_poses.size(); i++)
+  {
+    std::cout << "\nGuiding poses associated with object " << i+1 << '\n';
+    for(int j = 0; j < demo.guiding_poses[i].size(); j++)
+    {
+      std::cout << demo.guiding_poses[i][j] << '\n';
+    }
+  }
+
+  kinlib::TaskInstance new_task_instance;
+
+  new_task_instance.object_poses = demo.task_instance.object_poses;
+  new_task_instance.object_poses[1](0,3) = new_task_instance.object_poses[1](0,3) - 0.1;
+  new_task_instance.object_poses[1](1,3) = new_task_instance.object_poses[1](1,3) + 0.05;
+  new_task_instance.object_poses[1](2,3) = new_task_instance.object_poses[1](2,3) + 0.1;
+
+  Eigen::MatrixXd matlab_new_motion_plan_mat = loadCSV<Eigen::MatrixXd>(std::string(KINLIB_RESOURCES_DIR) + "Demonstrations/ScoopAndPour1/new_motion_plan.csv");
+
+  std::vector<Eigen::Matrix4d> matlab_new_motion_plan;
+
+  for(int i = 0; i < matlab_new_motion_plan_mat.rows()/4; i++)
+  {
+    Eigen::Matrix4d temp_g = matlab_new_motion_plan_mat.block<4,4>(i*4,0);
+    matlab_new_motion_plan.push_back(temp_g);
+  }
+
+  std::vector<Eigen::Matrix4d> new_motion_plan;
+  kinlib::ErrorCodes res = kinlib::UserGuidedMotionPlanner::planMotionForNewTaskInstance(demo,new_task_instance,new_motion_plan);
+
+  std::cout << "\nAlgorithm 1 Verification :\n";
+  if(new_motion_plan.size() == matlab_new_motion_plan.size())
+  {
+    for(int i = 0; i < new_motion_plan.size(); i++)
+    {
+      Eigen::Matrix4d diff = new_motion_plan[i] - matlab_new_motion_plan[i];
+      for(int l = 0; l < 4; l++)
+      {
+        for(int k = 0; k < 4; k++)
+        {
+          if(abs(diff(l,k)) > 1e-5)
+          {
+            std::cout << "[ ERROR ] Motion plan computation failed!\n";
+            break;
+          }
+        }
+      }
+
+      std::cout << "[SUCCESS] Pose " << i << " correct!\n";
+    }
+  }
+  else
+  {
+    std::cout << "[ ERROR ] Motion plan computation failed!\n";
+  }
+
+  std::cout << "\nAlgorithm 1 Output :\n";
+  for(auto g : new_motion_plan)
+  {
+    std::cout << g << '\n';
+  }
 }
