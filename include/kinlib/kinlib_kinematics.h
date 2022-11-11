@@ -196,8 +196,17 @@ ErrorCodes getNearestPoseOnScrew( const Eigen::Matrix4d &g_i,
 */
 ErrorCodes getScrewSegments(const std::vector<Eigen::Matrix4d> &g_seq,
                             std::vector<unsigned int> &segs,
-                            double max_pos_d = 0.05,
-                            double max_rot_d = 0.5);
+                            double max_pos_d = 0.015,
+                            double max_rot_d = 0.15);
+
+struct MotionPlanResult
+{
+  MotionPlanResult();
+  ~MotionPlanResult() = default;
+
+  MotionPlanReturnCodes result;
+  unsigned int joint_id;
+};
 
 class KinematicsSolver
 {
@@ -230,6 +239,10 @@ class KinematicsSolver
     */
     ErrorCodes getFK( const Eigen::VectorXd &jnt_values, 
                       Eigen::Matrix4d &g_base_tool);
+
+    ErrorCodes getEndEffectorTrajectory(
+        const Eigen::MatrixXd &jnt_angle_seq,
+        std::vector<Eigen::Matrix4d> &g_seq);
 
     /*!
       \brief    Get spatial jacobian of manipulator
@@ -282,7 +295,8 @@ class KinematicsSolver
                               const Eigen::Matrix4d &g_i,
                               const Eigen::Matrix4d &g_f,
                               //trajectory_msgs::JointTrajectory &jnt_trajectory);
-                              std::vector<Eigen::VectorXd> &jnt_values_seq);
+                              std::vector<Eigen::VectorXd> &jnt_values_seq,
+                              MotionPlanResult &plan_result);
 
   private:
     /*!

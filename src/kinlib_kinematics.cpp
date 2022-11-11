@@ -596,18 +596,25 @@ ErrorCodes KinematicsSolver::getResolvedMotionRateControlStep(
   return ErrorCodes::OPERATION_SUCCESS;
 }
 
+MotionPlanResult::MotionPlanResult() :
+  result(MotionPlanReturnCodes::UNKNOWN),
+  joint_id(0)
+{
+
+}
 
 ErrorCodes KinematicsSolver::getMotionPlan(
     const Eigen::VectorXd &init_jnt_values,
     const Eigen::Matrix4d &g_i,
     const Eigen::Matrix4d &g_f,
     //trajectory_msgs::JointTrajectory &jnt_trajectory);
-    std::vector<Eigen::VectorXd> &jnt_values_seq)
+    std::vector<Eigen::VectorXd> &jnt_values_seq,
+    MotionPlanResult &plan_result)
 {
   Eigen::VectorXd joint_values_inc;
   Eigen::VectorXd current_joint_values;
   Eigen::VectorXd next_joint_values;
-  
+
 #if DEBUG
 
   std::time_t now = std::time(0);
@@ -769,6 +776,8 @@ ErrorCodes KinematicsSolver::getMotionPlan(
       }
 #endif
 
+      plan_result.result = MotionPlanReturnCodes::JACOBIAN_PINV_NOT_FINITE;
+
       return ErrorCodes::OPERATION_FAILURE;
     }
 
@@ -825,6 +834,9 @@ determine_next_angles:
             log_file.flush();
           }
 #endif
+          plan_result.result = MotionPlanReturnCodes::JOINT_LIMITS_VIOLATED;
+          plan_result.joint_id = joint_limit_id;
+
           return ErrorCodes::JOINT_LIMIT_ERROR;
         }
 
@@ -855,6 +867,31 @@ determine_next_angles:
 
     pos_dist = positionDistance(g_current, g_f);
     rot_dist = rotationDistance(dq_current, dq_f);
+  }
+
+  if(itr_cnt > 10000)
+  {
+    plan_result.result = MotionPlanReturnCodes::PLANNER_NOT_CONVERGING;
+    return ErrorCodes::OPERATION_FAILURE;
+  }
+
+  plan_result.result = MotionPlanReturnCodes::PLAN_SUCCES;
+
+  return ErrorCodes::OPERATION_SUCCESS;
+}
+
+ErrorCodes KinematicsSolver::getEndEffectorTrajectory(
+    const Eigen::MatrixXd &jnt_angle_seq,
+    std::vector<Eigen::Matrix4d> &g_seq)
+{
+  g_seq.clear();
+  Eigen::Matrix4d ee_pose;
+
+  for(int i = 0; i < jnt_angle_seq.rows(); i++)
+  {
+    Eigen::VectorXd jnt_angle = jnt_angle_seq.block<1,7>(i, 0).transpose();
+    getFK(jnt_angle, ee_pose);
+    g_seq.push_back(ee_pose);
   }
 
   return ErrorCodes::OPERATION_SUCCESS;
