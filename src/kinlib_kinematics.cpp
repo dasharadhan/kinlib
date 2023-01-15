@@ -869,7 +869,7 @@ determine_next_angles:
     rot_dist = rotationDistance(dq_current, dq_f);
   }
 
-  if(itr_cnt > 10000)
+  if(itr_cnt >= 10000)
   {
     plan_result.result = MotionPlanReturnCodes::PLANNER_NOT_CONVERGING;
     return ErrorCodes::OPERATION_FAILURE;
