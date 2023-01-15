@@ -710,8 +710,10 @@ ErrorCodes KinematicsSolver::getMotionPlan(
   //jnt_trajectory.points.clear();
 
   std::vector<double> jnt_values(7,0);
+  
+  int convergence_threshold = 1000;
 
-  while((!(pos_dist < 0.0001 && rot_dist < 0.001)) && (itr_cnt < 10000))
+  while((!(pos_dist < 0.0001 && rot_dist < 0.001)) && (itr_cnt < convergence_threshold))
   {
 
 
@@ -869,7 +871,7 @@ determine_next_angles:
     rot_dist = rotationDistance(dq_current, dq_f);
   }
 
-  if(itr_cnt >= 10000)
+  if(itr_cnt >= convergence_threshold)
   {
     plan_result.result = MotionPlanReturnCodes::PLANNER_NOT_CONVERGING;
     return ErrorCodes::OPERATION_FAILURE;
