@@ -266,4 +266,34 @@ int main()
   {
     std::cout << g << '\n';
   }
+
+  Eigen::MatrixXd debug_recorded_demo = loadCSV<Eigen::MatrixXd>(std::string(KINLIB_RESOURCES_DIR) + "Demonstrations/Debug/ee_trajectory.csv");
+  Eigen::MatrixXd debug_object_poses = loadCSV<Eigen::MatrixXd>(std::string(KINLIB_RESOURCES_DIR) + "Demonstrations/Debug/object_pose.csv");
+
+  recorded_ee_traj.clear();
+  obj_poses.clear();
+
+  for(int i = 0; i < debug_recorded_demo.rows()/4; i++)
+  {
+    Eigen::Matrix4d g = debug_recorded_demo.block<4,4>((i*4),0);
+    recorded_ee_traj.push_back(g);
+  }
+
+  for(int i = 0; i < debug_object_poses.rows()/4; i++)
+  {
+    Eigen::Matrix4d g = debug_object_poses.block<4,4>((i*4),0);
+    obj_poses.push_back(g);
+  }
+
+  demo = kinlib::saveDemonstration(recorded_ee_traj,obj_poses);
+  
+  // Guiding poses
+  for(int i = 0; i < demo.guiding_poses.size(); i++)
+  {
+    std::cout << "\nGuiding poses associated with object " << i+1 << '\n';
+    for(int j = 0; j < demo.guiding_poses[i].size(); j++)
+    {
+      std::cout << demo.guiding_poses[i][j] << '\n';
+    }
+  }
 }

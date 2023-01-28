@@ -20,7 +20,7 @@ struct Demonstration
 Demonstration saveDemonstration(
     std::vector<Eigen::Matrix4d> &ee_trajectory,
     std::vector<Eigen::Matrix4d> &obj_poses,
-    double roi_radius = 0.30);
+    double alpha = 1.5);
 
 class UserGuidedMotionPlanner
 {
