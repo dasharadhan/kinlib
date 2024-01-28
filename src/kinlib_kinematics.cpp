@@ -286,7 +286,7 @@ ErrorCodes getNearestPoseOnScrew( const Eigen::Matrix4d &g_i,
   {
     L = t_f - t_i;
 
-    if(L < 0.001)
+    if(L < 0.0001)
     {
       t = (t_i + t_f) / 2.0;
       break;
@@ -357,12 +357,14 @@ ErrorCodes getScrewSegments(const std::vector<Eigen::Matrix4d> &g_seq,
   {
     for(end_idx = start_idx + 1; end_idx < g_seq.size(); end_idx++)
     {
+      double prev_nearest_t = -1;
+
       for(itr = start_idx + 1; itr <= end_idx; itr++)
       {
         getNearestPoseOnScrew(g_seq[start_idx], g_seq[end_idx], g_seq[itr],
                               nearest_t, pos_d_diff, rot_d_diff);
 
-        if((pos_d_diff > max_pos_d) || (rot_d_diff > max_rot_d))
+        if((pos_d_diff > max_pos_d) || (rot_d_diff > max_rot_d) || (std::abs(nearest_t - prev_nearest_t) < 1e-3))
         {
           segs.push_back(end_idx);
           start_idx = end_idx;
@@ -374,6 +376,8 @@ ErrorCodes getScrewSegments(const std::vector<Eigen::Matrix4d> &g_seq,
 
           break;
         }
+
+        prev_nearest_t = nearest_t;
       }
 
       if(end_idx == (g_seq.size() - 1))
