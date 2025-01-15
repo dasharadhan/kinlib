@@ -23,6 +23,13 @@ Demonstration saveDemonstration(
 
   getScrewSegments(ee_trajectory, segs, 0.015, 0.15);
 
+  std::cout << "Screw Segments : ";
+
+  for (auto i: segs)
+    std::cout << i << ", ";
+
+  std::cout << "\b\b\033[K" << std::endl;
+
   std::vector<Eigen::Matrix4d> sparse_ee_trajectory;
   sparse_ee_trajectory.push_back(ee_trajectory[0]);
 
@@ -58,6 +65,16 @@ Demonstration saveDemonstration(
     }
   }
 
+  // std::cout << "g_pose_dist : \n";
+  // for(int row = 0; row < g_pose_dist.size(); row++)
+  // {
+  //   for(int col = 0; col < g_pose_dist[row].size(); col++)
+  //   {
+  //     std::cout << g_pose_dist[row][col] << ", ";
+  //   }
+  //   std::cout << "\b\b\033[K" << std::endl;
+  // }
+
   std::vector<double> roi_radius;
   roi_radius.resize(obj_poses.size());
 
@@ -77,10 +94,10 @@ Demonstration saveDemonstration(
     for(int i = 0; i < obj_list.size(); i++)
     {
       //double dist = positionDistance(sparse_ee_trajectory[traj_itr], obj_poses[obj_list[i]]);
-      double dist = g_pose_dist[i][traj_itr];
-      std::cout << "Distance from object " << obj_list[i] << " to end-effector pose " << traj_itr << " : " << dist << '\n';
+      double dist = g_pose_dist[obj_list[i]][traj_itr];
+      std::cout << "Distance from object " << obj_list[i] << " to end-effector pose " << traj_itr << " : " << dist << std::endl;
 
-      if(dist <= roi_radius[i])
+      if(dist <= roi_radius[obj_list[i]])
       {
         nearest_obj_found = true;
         nearest_obj_id = obj_list[i];
@@ -103,7 +120,7 @@ Demonstration saveDemonstration(
       {
         //double dist_to_obj = positionDistance(sparse_ee_trajectory[traj_itr], obj_poses[nearest_obj_id]);
         double dist_to_obj = g_pose_dist[nearest_obj_id][traj_itr];
-        std::cout << "Distance from object " << nearest_obj_id << " to end-effector pose " << traj_itr << " : " << dist_to_obj << '\n';
+        std::cout << "Distance from object " << nearest_obj_id << " to end-effector pose " << traj_itr << " : " << dist_to_obj << std::endl;
         if(dist_to_obj <= roi_radius[nearest_obj_id])
         {
           // Compute the pose of the end-effector relative to the object
@@ -114,7 +131,7 @@ Demonstration saveDemonstration(
         }
         else
         {
-          std::cout << "Object " << nearest_obj_id << " far from end-effector pose " << traj_itr << '\n';
+          std::cout << "Object " << nearest_obj_id << " far from end-effector pose " << traj_itr << std::endl;
           demo.guiding_poses.push_back(obj_guiding_poses);
           guiding_poses_added = true;
           break;
@@ -124,7 +141,7 @@ Demonstration saveDemonstration(
       // Check if guiding poses are added to demo
       if(!guiding_poses_added)
       {
-        std::cout << "End of recorded trajectory. Added remaining poses to object " << nearest_obj_id << '\n';
+        std::cout << "End of recorded trajectory. Added remaining poses to object " << nearest_obj_id << std::endl;
         demo.guiding_poses.push_back(obj_guiding_poses);
       }
     }
