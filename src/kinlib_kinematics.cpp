@@ -391,6 +391,29 @@ ErrorCodes getScrewSegments(const std::vector<Eigen::Matrix4d> &g_seq,
   return ErrorCodes::OPERATION_SUCCESS;
 }
 
+void filterSE3Sequence( const std::vector<Eigen::Matrix4d> &g_seq,
+                        std::vector<Eigen::Matrix4d> &g_filt_seq,
+                        double pos_threshold,
+                        double rot_threshold)
+{
+  g_filt_seq.clear();
+
+  if(g_seq.size() > 0)
+  {
+    g_filt_seq.push_back(g_seq[0]);
+    for(unsigned int i = 0; i < g_seq.size(); i++)
+    {
+      double pos_dist = positionDistance(g_seq[i], g_filt_seq.back());
+      double rot_dist = rotationDistance(g_seq[i], g_filt_seq.back());
+
+      if(pos_dist >= pos_threshold || rot_dist >= rot_threshold)
+      {
+        g_filt_seq.push_back(g_seq[i]);
+      }
+    }
+  }
+}
+
 KinematicsSolver::KinematicsSolver()
 {
 
