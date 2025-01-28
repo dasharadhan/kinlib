@@ -20,7 +20,8 @@ struct Demonstration
 Demonstration saveDemonstration(
     std::vector<Eigen::Matrix4d> &ee_trajectory,
     std::vector<Eigen::Matrix4d> &obj_poses,
-    double alpha = 1.5);
+    double alpha = 0.30,
+    bool aplha_is_scale = false);
 
 class UserGuidedMotionPlanner
 {

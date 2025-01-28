@@ -7,7 +7,8 @@ namespace kinlib
 Demonstration saveDemonstration(
     std::vector<Eigen::Matrix4d> &ee_trajectory,
     std::vector<Eigen::Matrix4d> &obj_poses,
-    double alpha)
+    double alpha,
+    bool alpha_is_scale)
 {
   Demonstration demo;
 
@@ -80,7 +81,14 @@ Demonstration saveDemonstration(
 
   for(unsigned int obj_itr = 0; obj_itr < obj_poses.size(); obj_itr++)
   {
-    roi_radius[obj_itr] = alpha * g_pose_dist[obj_itr][obj_min_dist_pose[obj_itr]];
+    if(alpha_is_scale)
+    {
+      roi_radius[obj_itr] = alpha * g_pose_dist[obj_itr][obj_min_dist_pose[obj_itr]];
+    }
+    else
+    {
+      roi_radius[obj_itr] = alpha;
+    }
   }
 
   int traj_itr = 0;
