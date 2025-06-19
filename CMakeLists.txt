@@ -34,6 +34,13 @@ add_library(${PROJECT_NAME}
   src/kinlib_kinematics.cpp
   src/motion_planning.cpp
 )
+if(USE_PYTHON_BINDINGS)
+  set(PYBIND11_FINDPYTHON ON)
+  find_package(pybind11 CONFIG REQUIRED)
+  pybind11_add_module(kinlib_cpp src/python_bindings.cpp)
+  target_link_libraries(kinlib_cpp PRIVATE ${PROJECT_NAME})
+endif()
+
 target_include_directories(${PROJECT_NAME} PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
