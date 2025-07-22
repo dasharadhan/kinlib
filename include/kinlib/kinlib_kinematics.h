@@ -203,8 +203,27 @@ ErrorCodes getNearestPoseOnScrew( const Eigen::Matrix4d &g_i,
 */
 ErrorCodes getScrewSegments(const std::vector<Eigen::Matrix4d> &g_seq,
                             std::vector<unsigned int> &segs,
-                            double max_pos_d = 0.05,
-                            double max_rot_d = 0.5);
+                            double max_pos_d = 0.015,
+                            double max_rot_d = 0.15);
+
+/*!
+  \brief    Filters a sequence of SE(3) poses
+   
+  \details  Filters a sequence of SE(3) poses based on the given threshold in
+            Euclidean distance and SO(3) distance so that consecutive SE(3)
+            poses are not too close
+
+  \param    g_seq           Sequence of poses in SE(3)
+  \param    g_filt_seq      Filtered SE(3) sequence
+  \param    pos_threshold   Threshold in Euclidean distance
+  \param    rot_threshold   Threshold in SO(3) distance
+
+  \returns  Operation status
+*/
+void filterSE3Sequence( const std::vector<Eigen::Matrix4d> &g_seq,
+                        std::vector<Eigen::Matrix4d> &g_filt_seq,
+                        double pos_threshold = 0.005,
+                        double rot_threshold = 0.01);
 
 class KinematicsSolver
 {

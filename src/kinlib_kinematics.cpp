@@ -433,12 +433,14 @@ ErrorCodes getScrewSegments(const std::vector<Eigen::Matrix4d> &g_seq,
   {
     for(end_idx = start_idx + 1; end_idx < g_seq.size(); end_idx++)
     {
+      double prev_nearest_t = -1;
+
       for(itr = start_idx + 1; itr <= end_idx; itr++)
       {
         getNearestPoseOnScrew(g_seq[start_idx], g_seq[end_idx], g_seq[itr],
                               nearest_t, pos_d_diff, rot_d_diff);
 
-        if((pos_d_diff > max_pos_d) || (rot_d_diff > max_rot_d))
+        if((pos_d_diff > max_pos_d) || (rot_d_diff > max_rot_d) || (std::abs(nearest_t - prev_nearest_t) < 1e-3))
         {
           segs.push_back(end_idx);
           start_idx = end_idx;
@@ -450,6 +452,8 @@ ErrorCodes getScrewSegments(const std::vector<Eigen::Matrix4d> &g_seq,
 
           break;
         }
+
+        prev_nearest_t = nearest_t;
       }
 
       if(end_idx == (g_seq.size() - 1))
@@ -461,6 +465,29 @@ ErrorCodes getScrewSegments(const std::vector<Eigen::Matrix4d> &g_seq,
   }
 
   return ErrorCodes::OPERATION_SUCCESS;
+}
+
+void filterSE3Sequence( const std::vector<Eigen::Matrix4d> &g_seq,
+                        std::vector<Eigen::Matrix4d> &g_filt_seq,
+                        double pos_threshold,
+                        double rot_threshold)
+{
+  g_filt_seq.clear();
+
+  if(g_seq.size() > 0)
+  {
+    g_filt_seq.push_back(g_seq[0]);
+    for(unsigned int i = 0; i < g_seq.size(); i++)
+    {
+      double pos_dist = positionDistance(g_seq[i], g_filt_seq.back());
+      double rot_dist = rotationDistance(g_seq[i], g_filt_seq.back());
+
+      if(pos_dist >= pos_threshold || rot_dist >= rot_threshold)
+      {
+        g_filt_seq.push_back(g_seq[i]);
+      }
+    }
+  }
 }
 
 KinematicsSolver::KinematicsSolver()
