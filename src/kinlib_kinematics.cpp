@@ -6,7 +6,8 @@
 
 #include <iostream>
 #include "kinlib/kinlib_kinematics.h"
-
+#include "kinlib/nullSpace_kinematics.h"
+#include "kinlib/robot_parameter.h"
 Eigen::IOFormat PrintFormat(4,0,", ","\n");
 
 #if DEBUG
@@ -38,6 +39,33 @@ bool log_plan_request_error = false;
 
 namespace kinlib
 {
+  
+std::vector<Eigen::Matrix4d> interpolatePoses(
+    const Eigen::Matrix4d& g_start,
+    const Eigen::Matrix4d& g_end,
+    int steps)
+{
+    std::vector<Eigen::Matrix4d> interpolated_poses;
+    if (steps < 2)
+    {
+        interpolated_poses.push_back(g_start);
+        interpolated_poses.push_back(g_end);
+        return interpolated_poses;
+    }
+
+    eigen_ext::DualQuat dq_start(g_start);
+    eigen_ext::DualQuat dq_end(g_end);
+
+    for (int i = 0; i <= steps; ++i)
+    {
+        double t = static_cast<double>(i) / steps;
+        eigen_ext::DualQuat dq_interp = eigen_ext::DualQuat::dualQuatInterpolation(dq_start, dq_end, t);
+        interpolated_poses.push_back(dq_interp.getTransform());
+    }
+
+    return interpolated_poses;
+}
+
 double positionDistance(const Eigen::Matrix4d &t1, const Eigen::Matrix4d &t2)
 {
   Eigen::Vector4d p_delta = t1.col(3) - t2.col(3);
@@ -391,26 +419,47 @@ ErrorCodes getScrewSegments(const std::vector<Eigen::Matrix4d> &g_seq,
   return ErrorCodes::OPERATION_SUCCESS;
 }
 
-void filterSE3Sequence( const std::vector<Eigen::Matrix4d> &g_seq,
-                        std::vector<Eigen::Matrix4d> &g_filt_seq,
-                        double pos_threshold,
-                        double rot_threshold)
+
+// change this function
+void filterSE3Sequence(const std::vector<Eigen::Matrix4d> &g_seq,
+                       std::vector<Eigen::Matrix4d> &g_filt_seq,
+                       const std::vector<double> &gripper_condition,
+                       std::vector<double> &filtered_gripperCond,
+                       std::vector<unsigned int> &gripper_change_index,
+                       double pos_threshold,
+                       double rot_threshold)
 {
   g_filt_seq.clear();
-
+  filtered_gripperCond.clear();
+  gripper_change_index.clear();
   if(g_seq.size() > 0)
   {
     g_filt_seq.push_back(g_seq[0]);
-    for(unsigned int i = 0; i < g_seq.size(); i++)
+    filtered_gripperCond.push_back(gripper_condition[0]);
+    for(unsigned int i = 1; i < g_seq.size(); i++)
     {
       double pos_dist = positionDistance(g_seq[i], g_filt_seq.back());
       double rot_dist = rotationDistance(g_seq[i], g_filt_seq.back());
-
-      if(pos_dist >= pos_threshold || rot_dist >= rot_threshold)
+      if (gripper_condition[i] != gripper_condition[i-1])
       {
         g_filt_seq.push_back(g_seq[i]);
+        
+        filtered_gripperCond.push_back(gripper_condition[i]);
+      }
+      else if (pos_dist >= pos_threshold || rot_dist >= rot_threshold)
+      {
+        g_filt_seq.push_back(g_seq[i]);
+        filtered_gripperCond.push_back(gripper_condition[i]);
       }
     }
+    for(unsigned int i = 1; i < g_filt_seq.size(); i++)
+    {
+      if (filtered_gripperCond[i] != filtered_gripperCond[i-1])
+      {
+        gripper_change_index.push_back(i);
+      }
+    }
+     
   }
 }
 
@@ -629,6 +678,8 @@ MotionPlanResult::MotionPlanResult() :
 {
 
 }
+
+
 
 ErrorCodes KinematicsSolver::getMotionPlan(
     const Eigen::VectorXd &init_jnt_values,
@@ -908,6 +959,177 @@ determine_next_angles:
 
   return ErrorCodes::OPERATION_SUCCESS;
 }
+
+
+// Method: Nullspace and ScLERP in turn
+ErrorCodes KinematicsSolver::getMotionPlanWithNSP(
+    nullSpace::Robot &robot,
+    const Eigen::VectorXd &init_jnt_values,
+    const Eigen::Matrix4d &g_i,
+    const Eigen::Matrix4d &g_f,
+    std::vector<Eigen::VectorXd> &jnt_values_seq,
+    MotionPlanResult &plan_result,
+    double &outer_threshold,
+    double &inner_threshold
+) {
+    // 1) Clear and seed with the initial joint configuration
+    jnt_values_seq.clear();
+    jnt_values_seq.push_back(init_jnt_values);
+
+    // Initial state
+    Eigen::VectorXd current_joint_values = init_jnt_values;
+    Eigen::Matrix4d g_current = g_i;
+    eigen_ext::DualQuat dq_current(g_current);
+    eigen_ext::DualQuat dq_goal   (g_f);
+
+    double pos_dist = positionDistance(g_current, g_f);
+    double rot_dist = rotationDistance(dq_current, dq_goal);
+
+    int itr_cnt = 0;
+    const int convergence_threshold = 1000;
+    const double beta = 0.5;
+    double tau = 0.01;
+
+    int null_space_attempts = 0;
+    // Robot definition
+    // nullSpace::Robot panda = nullSpace::getPandaRobot();
+    nullSpace::Robot panda = robot;
+    while (!(pos_dist < 0.0001 && rot_dist < 0.001) && itr_cnt < convergence_threshold) {
+        itr_cnt++;
+
+        // --- ScLERP interpolation ---
+        eigen_ext::DualQuat dq_next =
+            eigen_ext::DualQuat::dualQuatInterpolation(dq_current, dq_goal, tau);
+        if (tau < 1.0) {
+            Eigen::Matrix4d g_tmp = dq_next.getTransform();
+            if (positionDistance(g_current, g_tmp) < 0.01) {
+                tau    += 0.01;
+                dq_next = eigen_ext::DualQuat::dualQuatInterpolation(dq_current, dq_goal, tau);
+            }
+        }
+
+        // --- Resolved‐rate control step ---
+        Eigen::VectorXd joint_values_inc;
+        getResolvedMotionRateControlStep(dq_current, dq_next,
+                                         current_joint_values,
+                                         joint_values_inc);
+        if (!joint_values_inc.allFinite()) {
+            std::cout << "\nJoint increments are not finite!\n";
+            plan_result.result = MotionPlanReturnCodes::JACOBIAN_PINV_NOT_FINITE;
+            return ErrorCodes::OPERATION_FAILURE;
+        }
+
+        // Proposed next joint values
+        Eigen::VectorXd next_joint_values = current_joint_values + beta * joint_values_inc;
+
+        // Check outer soft‐limit
+        auto [joint_limit_reached, joint_id, reach_up_limit] =
+            nullSpace::checkIfWithinSoftJointLimits(
+                panda, next_joint_values, outer_threshold);
+
+        if (joint_limit_reached) {
+            // ---- Null‐Space SEW correction branch ----
+            std::cout << "Joint " << joint_id + 1
+                      << " limit reached. Start null space motion plan attempt #"
+                      << (null_space_attempts+1) << "\n";
+
+            // How many steps to back to inner and then out of outer
+            auto [SEW_direction, step_back_to_inner_limit, step_out_of_outer_limit] =
+                nullSpace::checkStepLimits(
+                    panda,
+                    current_joint_values,   // start from current
+                    reach_up_limit,
+                    joint_id,
+                    outer_threshold,
+                    inner_threshold);
+
+            if (step_out_of_outer_limit <= 2) {
+                std::cerr << "cannot reach goal pose, reach joint limit\n";
+                plan_result.result = MotionPlanReturnCodes::JOINT_LIMITS_VIOLATED;
+                return ErrorCodes::JOINT_LIMIT_ERROR;
+            }
+          
+
+            // // choose the minimum one
+            // int n_steps = std::min(step_back_to_inner_limit, step_out_of_outer_limit);
+
+            int n_steps;
+            if (step_back_to_inner_limit<=step_out_of_outer_limit ){
+              n_steps  = step_back_to_inner_limit;
+            }
+            else{
+              n_steps  = 0.5 * step_out_of_outer_limit;
+            }
+
+            // Collect exactly n_steps of SEW null‐space motion
+            std::vector<Eigen::VectorXd> q_history;
+            q_history.reserve(n_steps + 1);
+            q_history.push_back(current_joint_values);
+
+            const double alpha_ns = 0.05;
+            Eigen::VectorXd theta = current_joint_values;
+
+            std::cout<<"now, move "<< n_steps<<" steps"<<"\n";
+
+            for (int i = 0; i < n_steps; ++i) {
+                Eigen::MatrixXd J_a  = nullSpace::getAugmentedJacobian(panda, theta);
+                Eigen::MatrixXd J_pinv = nullSpace::pinv(J_a);
+                Eigen::VectorXd err = Eigen::VectorXd::Zero(J_a.rows());
+                err(err.size()-1) = 0.1 * SEW_direction;
+                Eigen::VectorXd dq_dir = J_pinv * err;
+
+                Eigen::VectorXd q_next;
+                q_next = theta + alpha_ns * dq_dir;
+
+                q_history.push_back(q_next);
+                theta = q_next;
+            }
+
+            // **Only** append q_history[1..end], skip the duplicate start at [0]
+            for (int k = 1; k < (int)q_history.size(); ++k) {
+                jnt_values_seq.push_back(q_history[k]);
+            }
+
+            // Update current state to the last null‐space step
+            current_joint_values = q_history.back();
+
+            //  auto [if_joint_limit_reached, a, b] =
+            //                          nullSpace::checkIfWithinSoftJointLimits(
+            //     panda, current_joint_values, outer_threshold);
+
+            // std::cout<<"after NSP, now current joints is"<< current_joint_values <<"\n";
+
+
+            getFK(current_joint_values, g_current);
+            dq_current = eigen_ext::DualQuat::transformationToDualQuat(g_current);
+            pos_dist = positionDistance(g_current, g_f);
+            rot_dist = rotationDistance(dq_current, dq_goal);
+            tau = 0.01;
+            null_space_attempts++;
+          
+        }
+        else {
+            // ---- Normal ScLERP / resolved‐rate branch ----
+            jnt_values_seq.push_back(next_joint_values);
+
+            current_joint_values = next_joint_values;
+            getFK(current_joint_values, g_current);
+            dq_current = eigen_ext::DualQuat::transformationToDualQuat(g_current);
+            pos_dist    = positionDistance(g_current, g_f);
+            rot_dist    = rotationDistance(dq_current, dq_goal);
+        }
+    }
+
+    if (itr_cnt >= convergence_threshold) {
+        plan_result.result = MotionPlanReturnCodes::PLANNER_NOT_CONVERGING;
+        return ErrorCodes::OPERATION_FAILURE;
+    }
+
+    plan_result.result = MotionPlanReturnCodes::PLAN_SUCCES;
+    return ErrorCodes::OPERATION_SUCCESS;
+}
+
+
 
 ErrorCodes KinematicsSolver::getEndEffectorTrajectory(
     const Eigen::MatrixXd &jnt_angle_seq,

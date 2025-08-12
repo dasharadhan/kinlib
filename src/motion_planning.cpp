@@ -7,11 +7,14 @@ namespace kinlib
 Demonstration saveDemonstration(
     std::vector<Eigen::Matrix4d> &ee_trajectory,
     std::vector<Eigen::Matrix4d> &obj_poses,
+    const std::vector<double> &gripper_condition,
+    std::vector<double> &guiding_pose_gripper_cond,
+    const std::vector<unsigned int> &gripper_change_index,
     double alpha,
     bool alpha_is_scale)
 {
   Demonstration demo;
-
+  guiding_pose_gripper_cond.clear();
   if(ee_trajectory.size() == 0 || obj_poses.size() == 0)
   {
     return demo;
@@ -23,6 +26,11 @@ Demonstration saveDemonstration(
   std::vector<unsigned int> segs;
 
   getScrewSegments(ee_trajectory, segs, 0.015, 0.15);
+
+  segs.insert(segs.end(), gripper_change_index.begin(), gripper_change_index.end());
+  std::sort(segs.begin(), segs.end());
+  auto last_unique = std::unique(segs.begin(), segs.end());
+  segs.erase(last_unique, segs.end());
 
   std::cout << "Screw Segments : ";
 
@@ -64,6 +72,8 @@ Demonstration saveDemonstration(
         obj_min_dist_pose[obj_itr] = g_pose_itr;
       }
     }
+
+  // std::cout << "sparse_ee_trajectory is :\n" << sparse_ee_trajectory.size() << std::endl;
   }
 
   // std::cout << "g_pose_dist : \n";
@@ -135,6 +145,8 @@ Demonstration saveDemonstration(
           Eigen::Matrix4d ee_pose_rel_to_obj = 
               getTransformationInv(obj_poses[nearest_obj_id]) * sparse_ee_trajectory[traj_itr];
           obj_guiding_poses.push_back(ee_pose_rel_to_obj);
+          guiding_pose_gripper_cond.push_back(gripper_condition[segs[traj_itr]]);
+          // add a parameter that push back the gripper condition gripper_condition[segs[traj_itr]]
           traj_itr++;
         }
         else
@@ -176,8 +188,10 @@ ErrorCodes UserGuidedMotionPlanner::planMotionForNewTaskInstance(
   {
     for(unsigned int j = 0; j < demo.guiding_poses[i].size(); j++)
     {
+      
       Eigen::Matrix4d ee_pose = new_task_instance.object_poses[i] * demo.guiding_poses[i][j];
       ee_pose_seq.push_back(ee_pose);
+      
     }
   }
 
