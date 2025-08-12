@@ -17,7 +17,7 @@
 #include "kinlib.h"
 #include "manipulator.h"
 #include "DualQuat.h"
-
+#include "nullSpace_kinematics.h"
 #define PURE_TRANSLATION_ROT_ANGLE_THRESHOLD  1.0e-5
 #define PURE_ROTATION_PITCH_THRESHOLD         1.0e-5
 #define NO_MOTION_MAGNITUDE_THRESHOLD         1.0e-5
@@ -55,6 +55,17 @@ double positionDistance(const Eigen::Matrix4d &t1, const Eigen::Matrix4d &t2);
 
   \return   Eucledian distance
 */
+
+
+//  for null space use
+std::vector<Eigen::Matrix4d> interpolatePoses(
+    const Eigen::Matrix4d& g_start,
+    const Eigen::Matrix4d& g_end,
+    int steps);
+
+
+
+    
 double positionDistance(const Eigen::VectorXd &p1, const Eigen::VectorXd &p2);
 
 /*!
@@ -215,6 +226,9 @@ ErrorCodes getScrewSegments(const std::vector<Eigen::Matrix4d> &g_seq,
 */
 void filterSE3Sequence( const std::vector<Eigen::Matrix4d> &g_seq,
                         std::vector<Eigen::Matrix4d> &g_filt_seq,
+                        const std::vector<double> &gripper_condition,
+                        std::vector<double> &filtered_gripperCond,
+                        std::vector<unsigned int> &gripper_change_index,
                         double pos_threshold = 0.005,
                         double rot_threshold = 0.01);
 
@@ -258,6 +272,22 @@ class KinematicsSolver
     */
     ErrorCodes getFK( const Eigen::VectorXd &jnt_values, 
                       Eigen::Matrix4d &g_base_tool);
+    
+
+
+
+    ErrorCodes getMotionPlanWithNSP(
+        nullSpace::Robot &robot,
+        const Eigen::VectorXd &init_jnt_values,
+        const Eigen::Matrix4d &g_i,
+        const Eigen::Matrix4d &g_f,
+        std::vector<Eigen::VectorXd> &jnt_values_seq,
+        MotionPlanResult &plan_result,
+        double &outer_threshold,
+        double &inner_threshold
+    );
+
+
 
     ErrorCodes getEndEffectorTrajectory(
         const Eigen::MatrixXd &jnt_angle_seq,
@@ -290,6 +320,11 @@ class KinematicsSolver
 
       \return   Operation status
     */
+
+    
+
+
+
     ErrorCodes getResolvedMotionRateControlStep(
         eigen_ext::DualQuat &dq_i,
         eigen_ext::DualQuat &dq_f,

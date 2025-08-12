@@ -20,6 +20,9 @@ struct Demonstration
 Demonstration saveDemonstration(
     std::vector<Eigen::Matrix4d> &ee_trajectory,
     std::vector<Eigen::Matrix4d> &obj_poses,
+    const std::vector<double> &gripper_condition,
+    std::vector<double> &guiding_pose_gripper_cond,
+    const std::vector<unsigned int> &gripper_change_index,
     double alpha = 0.30,
     bool aplha_is_scale = false);
 
