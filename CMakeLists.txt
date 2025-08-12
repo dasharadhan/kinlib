@@ -61,69 +61,6 @@ install(FILES ${PROJECT_BINARY_DIR}/include/${PROJECT_NAME}/${PROJECT_NAME}_reso
 # 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 # target_link_libraries(kinlib_example ${PROJECT_NAME})
 
-# add_executable(panda_example src/panda_example.cpp)
-# target_include_directories(panda_example PUBLIC
-# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
-# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-# target_link_libraries(panda_example ${PROJECT_NAME})
-
-# add_executable(panda_ScLERP src/panda_ScLERP.cpp)
-# target_include_directories(panda_ScLERP PUBLIC
-# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
-# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-# target_link_libraries(panda_ScLERP ${PROJECT_NAME})
-
-# add_executable(panda_pickPlace src/panda_pickPlace.cpp)
-# target_include_directories(panda_pickPlace PUBLIC
-# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
-# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-# target_link_libraries(panda_pickPlace ${PROJECT_NAME})
-
-# add_executable(test_ScLERP src/test_ScLERP.cpp)
-# target_include_directories(test_ScLERP PUBLIC
-# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
-# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-# target_link_libraries(test_ScLERP ${PROJECT_NAME})
-
-
-# add_executable(buildWall src/buildWall.cpp)
-# target_include_directories(buildWall PUBLIC
-# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
-# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-# target_link_libraries(buildWall ${PROJECT_NAME})
-
-# add_executable(VR_buildWall src/VR_buildWall.cpp)
-# target_include_directories(VR_buildWall PUBLIC
-# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
-# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-# target_link_libraries(VR_buildWall ${PROJECT_NAME})
-
-# add_executable(VR_curveWall src/VR_curveWall.cpp)
-# target_include_directories(VR_curveWall PUBLIC
-# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
-# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-# target_link_libraries(VR_curveWall ${PROJECT_NAME})
-
-add_executable(celling_tile_build src/celling_tile_build.cpp)
-target_include_directories(celling_tile_build PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
-	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(celling_tile_build ${PROJECT_NAME})
-
-# add_executable(middle_null_space_test src/middle_null_space_test.cpp)
-# target_include_directories(middle_null_space_test PUBLIC
-# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
-# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-# target_link_libraries(middle_null_space_test ${PROJECT_NAME})
 
 
 add_executable(null_space_softlimit src/null_space_softlimit.cpp)
@@ -133,16 +70,3 @@ target_include_directories(null_space_softlimit PUBLIC
 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_link_libraries(null_space_softlimit ${PROJECT_NAME})
 
-add_executable(verify_null_space src/verify_null_space.cpp)
-target_include_directories(verify_null_space PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
-	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(verify_null_space ${PROJECT_NAME})
-
-add_executable(celling_tile_debug src/celling_tile_debug.cpp)
-target_include_directories(celling_tile_debug PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
-	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(celling_tile_debug ${PROJECT_NAME})
