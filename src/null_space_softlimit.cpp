@@ -29,7 +29,7 @@ std::vector<double> readGripperCondition(const std::string& filename) {
     std::ifstream file(filename);
     
     if (!file.is_open()) {
-        std::cerr << "无法打开文件: " << filename << std::endl;
+        std::cerr << "cannot open files: " << filename << std::endl;
         return values;
     }
     
@@ -121,40 +121,49 @@ int main() {
     kinlib::KinematicsSolver kin_solver(panda_manipulator);
     // std::vector<Eigen::VectorXd> all_motion_plans;
     Eigen::VectorXd init_jnt_val(7); 
-    init_jnt_val << -1.8, -1.2, 1.5, -2.0, 1.5, 1.0, 2.0;
-    //   init_jnt_val << 0.9407,  -1.324,  -0.313,  -2.439,   0.02,    2.08, 0.02683;
+    init_jnt_val << 1.343, -0.482, 0.937, -2.596, -0.344, 1.785, 0.312;
+    // init_jnt_val << 0.9407,  -1.324,  -0.313,  -2.439,   -0.52,    2.08, 0.02683;
     Eigen::Matrix4d init_ee_g;
     kin_solver.getFK(init_jnt_val, init_ee_g);
 
     Eigen::VectorXd goal_jnt_val(7); 
-    goal_jnt_val << 0.9407,  -1.324,  -0.313,  -2.439,   0.02,    2.08, 0.02683;
+    goal_jnt_val <<-1., -1.003, -0.219, -2.464, 1.593, 1.662, -0.406;
     Eigen::Matrix4d goal_ee_g;
     kin_solver.getFK(goal_jnt_val, goal_ee_g);
 
     // No need to re-declare init_ee_g here; it's already declared above
-    std::vector<Eigen::VectorXd> motion_plan_result;
 
-    kinlib::MotionPlanResult plan_info;
 
+
+    std::vector<Eigen::VectorXd> motion_plan_result_withNSP;
+    kinlib::MotionPlanResult plan_info_with_NSP;
     nullSpace::Robot panda = nullSpace::getPandaRobot();
     Eigen::VectorXd current_jnt_config(7); 
     current_jnt_config = init_jnt_val;
     double outer_threshold = 0.1;
     double inner_threshold = 0.2;
 
-    kinlib::ErrorCodes plan_res = kin_solver.getMotionPlanWithNSP(
+
+    // motion plan with null space motion
+    kinlib::ErrorCodes plan_res_NSP = kin_solver.getMotionPlanWithNSP(
         panda,
         current_jnt_config,
         init_ee_g,
         goal_ee_g,
-        motion_plan_result,
-        plan_info,
+        motion_plan_result_withNSP,
+        plan_info_with_NSP,
         outer_threshold,
         inner_threshold);
+    saveMotionPlanToCSV(motion_plan_result_withNSP, "null_space_joints_withNSP.csv");
 
-    
-    
-    saveMotionPlanToCSV(motion_plan_result, "null_space_joints_withNSP_differentSteps.csv");
+
+    // motion plan without null space motion
+    std::vector<Eigen::VectorXd> motion_plan_result;
+    kinlib::MotionPlanResult plan_info;
+    kinlib::ErrorCodes plan_res = kin_solver.getMotionPlan(init_jnt_val, init_ee_g, goal_ee_g, motion_plan_result, plan_info);
+    saveMotionPlanToCSV(motion_plan_result, "null_space_joints_withoutNSP.csv");
+
+
     // hard code the gripper condition since the VR data does not have the message
     // all_motion_plans.insert(all_motion_plans.end(), motion_plan_result.begin(), motion_plan_result.end());
     // init_jnt_val = motion_plan_result.back();
