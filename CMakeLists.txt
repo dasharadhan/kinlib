@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project(kinlib)
 
 # Set CXX Standard for the project
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)
@@ -33,14 +33,9 @@ add_library(${PROJECT_NAME}
   src/manipulator.cpp
   src/kinlib_kinematics.cpp
   src/motion_planning.cpp
+  src/nullSpace_kinematics.cpp
+  src/robot_parameter.cpp
 )
-if(USE_PYTHON_BINDINGS)
-  set(PYBIND11_FINDPYTHON ON)
-  find_package(pybind11 CONFIG REQUIRED)
-  pybind11_add_module(kinlib_cpp src/python_bindings.cpp)
-  target_link_libraries(kinlib_cpp PRIVATE ${PROJECT_NAME})
-endif()
-
 target_include_directories(${PROJECT_NAME} PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
@@ -59,9 +54,95 @@ install(DIRECTORY include/
 install(FILES ${PROJECT_BINARY_DIR}/include/${PROJECT_NAME}/${PROJECT_NAME}_resources.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
 
-add_executable(kinlib_example src/example.cpp)
-target_include_directories(kinlib_example PUBLIC
+# add_executable(kinlib_example src/example.cpp)
+# target_include_directories(kinlib_example PUBLIC
+# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+# target_link_libraries(kinlib_example ${PROJECT_NAME})
+
+# add_executable(panda_example src/panda_example.cpp)
+# target_include_directories(panda_example PUBLIC
+# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+# target_link_libraries(panda_example ${PROJECT_NAME})
+
+# add_executable(panda_ScLERP src/panda_ScLERP.cpp)
+# target_include_directories(panda_ScLERP PUBLIC
+# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+# target_link_libraries(panda_ScLERP ${PROJECT_NAME})
+
+# add_executable(panda_pickPlace src/panda_pickPlace.cpp)
+# target_include_directories(panda_pickPlace PUBLIC
+# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+# target_link_libraries(panda_pickPlace ${PROJECT_NAME})
+
+# add_executable(test_ScLERP src/test_ScLERP.cpp)
+# target_include_directories(test_ScLERP PUBLIC
+# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+# target_link_libraries(test_ScLERP ${PROJECT_NAME})
+
+
+# add_executable(buildWall src/buildWall.cpp)
+# target_include_directories(buildWall PUBLIC
+# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+# target_link_libraries(buildWall ${PROJECT_NAME})
+
+# add_executable(VR_buildWall src/VR_buildWall.cpp)
+# target_include_directories(VR_buildWall PUBLIC
+# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+# target_link_libraries(VR_buildWall ${PROJECT_NAME})
+
+# add_executable(VR_curveWall src/VR_curveWall.cpp)
+# target_include_directories(VR_curveWall PUBLIC
+# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+# target_link_libraries(VR_curveWall ${PROJECT_NAME})
+
+add_executable(celling_tile_build src/celling_tile_build.cpp)
+target_include_directories(celling_tile_build PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(kinlib_example ${PROJECT_NAME})
+target_link_libraries(celling_tile_build ${PROJECT_NAME})
+
+# add_executable(middle_null_space_test src/middle_null_space_test.cpp)
+# target_include_directories(middle_null_space_test PUBLIC
+# 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+# 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+# 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+# target_link_libraries(middle_null_space_test ${PROJECT_NAME})
+
+
+add_executable(null_space_softlimit src/null_space_softlimit.cpp)
+target_include_directories(null_space_softlimit PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_link_libraries(null_space_softlimit ${PROJECT_NAME})
+
+add_executable(verify_null_space src/verify_null_space.cpp)
+target_include_directories(verify_null_space PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_link_libraries(verify_null_space ${PROJECT_NAME})
+
+add_executable(celling_tile_debug src/celling_tile_debug.cpp)
+target_include_directories(celling_tile_debug PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_link_libraries(celling_tile_debug ${PROJECT_NAME})
