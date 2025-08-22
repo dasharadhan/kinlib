@@ -993,7 +993,7 @@ ErrorCodes KinematicsSolver::getMotionPlanWithNSP(
     int null_space_attempts = 0;
     // Robot definition
     // nullSpace::Robot panda = nullSpace::getPandaRobot();
-    nullSpace::Robot panda = robot;
+    // nullSpace::Robot panda = robot;
     while (!(pos_dist < 0.0001 && rot_dist < 0.001) && itr_cnt < convergence_threshold) {
         itr_cnt++;
 
@@ -1023,10 +1023,19 @@ ErrorCodes KinematicsSolver::getMotionPlanWithNSP(
         Eigen::VectorXd next_joint_values = current_joint_values + beta * joint_values_inc;
 
         // Check outer soft‐limit
-        auto [joint_limit_reached, joint_id, reach_up_limit] =
-            nullSpace::checkIfWithinSoftJointLimits(
-                panda, next_joint_values, outer_threshold);
+        // auto [joint_limit_reached, joint_id, reach_up_limit] =
+        //     nullSpace::checkIfWithinSoftJointLimits(
+        //         robot, next_joint_values, outer_threshold);
+        
 
+        std::tuple<bool,int,bool> res =
+        nullSpace::checkIfWithinSoftJointLimits(robot, next_joint_values, outer_threshold);
+
+        bool joint_limit_reached = std::get<0>(res);
+        int  joint_id            = std::get<1>(res);
+        bool reach_up_limit      = std::get<2>(res);
+
+        
         if (joint_limit_reached) {
             // ---- Null‐Space SEW correction branch ----
             std::cout << "Joint " << joint_id + 1
@@ -1034,15 +1043,19 @@ ErrorCodes KinematicsSolver::getMotionPlanWithNSP(
                       << (null_space_attempts+1) << "\n";
 
             // How many steps to back to inner and then out of outer
-            auto [SEW_direction, step_back_to_inner_limit, step_out_of_outer_limit] =
-                nullSpace::checkStepLimits(
-                    panda,
-                    current_joint_values,   // start from current
-                    reach_up_limit,
-                    joint_id,
-                    outer_threshold,
-                    inner_threshold);
-
+            // auto [SEW_direction, step_back_to_inner_limit, step_out_of_outer_limit] =
+            //     nullSpace::checkStepLimits(
+            //         robot,
+            //         current_joint_values,   // start from current
+            //         reach_up_limit,
+            //         joint_id,
+            //         outer_threshold,
+            //         inner_threshold);
+            std::tuple<int,int,int> stepLimitRes = nullSpace::checkStepLimits( robot, current_joint_values, reach_up_limit, joint_id, outer_threshold, inner_threshold);
+            int SEW_direction = std::get<0>(stepLimitRes);
+            int step_back_to_inner_limit = std::get<1>(stepLimitRes);
+            int step_out_of_outer_limit = std::get<2>(stepLimitRes);
+            
             if (step_out_of_outer_limit <= 2) {
                 std::cerr << "cannot reach goal pose, reach joint limit\n";
                 plan_result.result = MotionPlanReturnCodes::JOINT_LIMITS_VIOLATED;
@@ -1072,7 +1085,7 @@ ErrorCodes KinematicsSolver::getMotionPlanWithNSP(
             std::cout<<"now, move "<< n_steps<<" steps"<<"\n";
 
             for (int i = 0; i < n_steps; ++i) {
-                Eigen::MatrixXd J_a  = nullSpace::getAugmentedJacobian(panda, theta);
+                Eigen::MatrixXd J_a  = nullSpace::getAugmentedJacobian(robot, theta);
                 Eigen::MatrixXd J_pinv = nullSpace::pinv(J_a);
                 Eigen::VectorXd err = Eigen::VectorXd::Zero(J_a.rows());
                 err(err.size()-1) = 0.1 * SEW_direction;
