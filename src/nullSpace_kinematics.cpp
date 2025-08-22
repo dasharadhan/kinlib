@@ -33,7 +33,7 @@ manipDKin(const Robot& manipulator, const Eigen::VectorXd& theta) {
         Eigen::Matrix4d g_temp = Eigen::Matrix4d::Identity();
         if (manipulator.type_joints[i] == 0) {
             // Revolute
-            auto R = axisAngleToRot(manipulator.axis_joints[i], theta[i]);
+            Eigen::Matrix3d R = axisAngleToRot(manipulator.axis_joints[i], theta[i]);
             g_temp.block<3,3>(0,0) = R;
             g_temp.block<3,1>(0,3) =
                 (Eigen::Matrix3d::Identity() - R) * manipulator.q_joints[i];
@@ -52,7 +52,12 @@ manipDKin(const Robot& manipulator, const Eigen::VectorXd& theta) {
 
 std::pair<double, SewParams> getSEWParams(const Robot& robot, const Eigen::VectorXd& theta){
     SewParams sew;
-    auto [g_base_tool, transforms] = manipDKin(robot, theta);
+    // auto [g_base_tool, transforms] = manipDKin(robot, theta);
+
+    std::pair<Eigen::Matrix4d, std::vector<Eigen::Matrix4d>> result = manipDKin(robot, theta);
+
+    Eigen::Matrix4d g_base_tool = result.first;
+    std::vector<Eigen::Matrix4d> transforms = result.second;
     sew.p_S = robot.S_0;
    
     Eigen::Vector4d tmp1 = transforms[robot.E_idx - 1] * Eigen::Vector4d(robot.E_0.x(), robot.E_0.y(), robot.E_0.z(), 1.0);
@@ -179,7 +184,10 @@ Eigen::MatrixXd pinv(const Eigen::MatrixXd& A, double tol) {
 }
 
 Eigen::MatrixXd getAugmentedJacobian(const Robot& robot, const Eigen::VectorXd& theta){
-    auto [sew_angle, sew] = getSEWParams(robot, theta);
+    // auto [sew_angle, sew] = getSEWParams(robot, theta);
+    std::pair<double, SewParams> result = getSEWParams(robot, theta);
+    double sew_angle = result.first;
+    SewParams sew   = result.second;
     Eigen::MatrixXd J_s = spatialManipJac(robot, theta);
     int n = J_s.cols();
     Eigen::RowVectorXd J_psi_E = 
@@ -276,7 +284,11 @@ std::tuple<int,int,int> checkStepLimits( const Robot& robot,
         Eigen::VectorXd dq = J_pinv * err;
         q_next = theta + 0.05 * dq;
 
-        auto [out_of_range, idx, _] = nullSpace::checkIfWithinSoftJointLimits(robot, q_next, outer_threshold);
+        // auto [out_of_range, idx, _] = nullSpace::checkIfWithinSoftJointLimits(robot, q_next, outer_threshold);
+        std::tuple<bool, int, bool> result =  nullSpace::checkIfWithinSoftJointLimits(robot, q_next, outer_threshold);
+
+        bool out_of_range = std::get<0>(result);
+        int idx = std::get<1>(result);
 
         ++step_out_of_limit;
         if(out_of_range)
@@ -366,65 +378,65 @@ bool checkIfBacktoSoftJointLimits(
 }
 
 
+// rewrite it to C++ 11 version
+// std::vector<Eigen::VectorXd> exploreNullSpaceRange(
+//     const Robot& robot,
+//     const Eigen::VectorXd& theta0)
+// {
+//     double step_scale = 0.05;
 
-std::vector<Eigen::VectorXd> exploreNullSpaceRange(
-    const Robot& robot,
-    const Eigen::VectorXd& theta0)
-{
-    double step_scale = 0.05;
+//     auto withinLimits = [&](const Eigen::VectorXd& q)->bool {
+//         for(int i = 0; i < q.size(); ++i) {
+//             if (q(i) < robot.joint_limits(i,0)
+//              || q(i) > robot.joint_limits(i,1))
+//                 return false;
+//         }
+//         return true;
+//     };
 
-    auto withinLimits = [&](const Eigen::VectorXd& q)->bool {
-        for(int i = 0; i < q.size(); ++i) {
-            if (q(i) < robot.joint_limits(i,0)
-             || q(i) > robot.joint_limits(i,1))
-                return false;
-        }
-        return true;
-    };
+//     // negative direction  
+//     std::vector<Eigen::VectorXd> negative_dir;
+//     {
+//         Eigen::VectorXd q = theta0;
+//         while (true) {
+//             Eigen::MatrixXd J_a    = nullSpace::getAugmentedJacobian(robot, q);
+//             Eigen::MatrixXd J_pinv = nullSpace::pinv(J_a);
+//             Eigen::VectorXd err    = Eigen::VectorXd::Zero(J_a.rows());
+//             err(err.size()-1)      = 0.1;
+//             Eigen::VectorXd dq     = J_pinv * err;
 
-    // negative direction  
-    std::vector<Eigen::VectorXd> negative_dir;
-    {
-        Eigen::VectorXd q = theta0;
-        while (true) {
-            Eigen::MatrixXd J_a    = nullSpace::getAugmentedJacobian(robot, q);
-            Eigen::MatrixXd J_pinv = nullSpace::pinv(J_a);
-            Eigen::VectorXd err    = Eigen::VectorXd::Zero(J_a.rows());
-            err(err.size()-1)      = 0.1;
-            Eigen::VectorXd dq     = J_pinv * err;
+//             Eigen::VectorXd q_next = q - step_scale * dq;
+//             if (!withinLimits(q_next)) break;
+//             negative_dir.push_back(q_next);
+//             q = q_next;
+//         }
+//     }
 
-            Eigen::VectorXd q_next = q - step_scale * dq;
-            if (!withinLimits(q_next)) break;
-            negative_dir.push_back(q_next);
-            q = q_next;
-        }
-    }
+//     // positive direction
+//     std::vector<Eigen::VectorXd> positive_dir;
+//     {
+//         Eigen::VectorXd q = theta0;
+//         while (true) {
+//             Eigen::MatrixXd J_a    = nullSpace::getAugmentedJacobian(robot, q);
+//             Eigen::MatrixXd J_pinv = nullSpace::pinv(J_a);
+//             Eigen::VectorXd err    = Eigen::VectorXd::Zero(J_a.rows());
+//             err(err.size()-1)      = 0.1;
+//             Eigen::VectorXd dq     = J_pinv * err;
 
-    // positive direction
-    std::vector<Eigen::VectorXd> positive_dir;
-    {
-        Eigen::VectorXd q = theta0;
-        while (true) {
-            Eigen::MatrixXd J_a    = nullSpace::getAugmentedJacobian(robot, q);
-            Eigen::MatrixXd J_pinv = nullSpace::pinv(J_a);
-            Eigen::VectorXd err    = Eigen::VectorXd::Zero(J_a.rows());
-            err(err.size()-1)      = 0.1;
-            Eigen::VectorXd dq     = J_pinv * err;
-
-            Eigen::VectorXd q_next = q + step_scale * dq;
-            if (!withinLimits(q_next)) break;
-            positive_dir.push_back(q_next);
-            q = q_next;
-        }
-    }
-    std::vector<Eigen::VectorXd> all_configs;
-    for (auto it = negative_dir.rbegin(); it != negative_dir.rend(); ++it) {
-        all_configs.push_back(*it);
-    }
-    all_configs.push_back(theta0);
-    for (auto& q : positive_dir) {
-        all_configs.push_back(q);
-    }
-    return all_configs;
-}
+//             Eigen::VectorXd q_next = q + step_scale * dq;
+//             if (!withinLimits(q_next)) break;
+//             positive_dir.push_back(q_next);
+//             q = q_next;
+//         }
+//     }
+//     std::vector<Eigen::VectorXd> all_configs;
+//     for (auto it = negative_dir.rbegin(); it != negative_dir.rend(); ++it) {
+//         all_configs.push_back(*it);
+//     }
+//     all_configs.push_back(theta0);
+//     for (auto& q : positive_dir) {
+//         all_configs.push_back(q);
+//     }
+//     return all_configs;
+// }
 }
