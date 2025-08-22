@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.5)
 project(kinlib)
 
 # Set CXX Standard for the project
-set(CMAKE_CXX_STANDARD 17)
+# set(CMAKE_CXX_STANDARD 17)
+add_compile_options(-std=c++11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)
@@ -70,3 +71,10 @@ target_include_directories(null_space_softlimit PUBLIC
 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_link_libraries(null_space_softlimit ${PROJECT_NAME})
 
+
+add_executable(null_space_baxter src/null_space_baxter.cpp)
+target_include_directories(null_space_baxter PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
+	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+target_link_libraries(null_space_baxter ${PROJECT_NAME})
