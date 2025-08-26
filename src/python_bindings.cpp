@@ -33,6 +33,7 @@ M loadCSV (const std::string & path) {
 namespace python_bindings {
     py::tuple motion_plan_for_goal_pose(Eigen::VectorXd init_joint_angle, Eigen::Matrix4d goal_pose);
     Eigen::Matrix4d forward_kinematics(Eigen::VectorXd joint_angle);
+    py::tuple poses_for_demonstration(std::vector<Eigen::Matrix4d> demonstration_poses, std::vector<double> gripper_states, std::vector<Eigen::Matrix4d> passive_object_poses);
 
     Eigen::IOFormat CleanFmt(Eigen::FullPrecision, 0, "\t", "\n");
     kinlib::Manipulator baxter_manipulator;
@@ -49,6 +50,10 @@ namespace python_bindings {
     Eigen::Vector4d jnt_axis;
     Eigen::Vector4d jnt_q;
     kinlib::JointLimits jnt_limits;
+
+    // constants for kinlib
+    double pos_threshold = 0.005;
+    double rot_threshold = 0.01;
 
     void init() {
         for(int i = 0; i < 7; i++) {
@@ -78,18 +83,18 @@ namespace python_bindings {
         kinlib::KinematicsSolver kin_solver(baxter_manipulator);
         Eigen::Matrix4d init_ee_pose;
         kin_solver.getFK(init_joint_angle, init_ee_pose);
-        std::vector<Eigen::VectorXd> motion_plan_result;
+        std::vector<Eigen::VectorXd> pose_result;
         kinlib::MotionPlanResult plan_info;
-        kinlib::ErrorCodes plan_res = kin_solver.getMotionPlan(init_joint_angle, init_ee_pose, goal_pose, motion_plan_result, plan_info);
+        kinlib::ErrorCodes plan_res = kin_solver.getMotionPlan(init_joint_angle, init_ee_pose, goal_pose, pose_result, plan_info);
 
         if (plan_res == kinlib::ErrorCodes::OPERATION_SUCCESS) {
             std::cout << "[SUCCESS] Motion plan computed successfully!\n";
-            std::cout << "[SUCCESS] Motion plan length : " << motion_plan_result.size() << std::endl;
-            return py::make_tuple(motion_plan_result, true);
+            std::cout << "[SUCCESS] Motion plan length : " << pose_result.size() << std::endl;
+            return py::make_tuple(pose_result, true);
         } else {
             std::cout << "[ ERROR ] Motion plan computation failed!\n";
-            std::cout << "[ ERROR ] Motion plan length : " << motion_plan_result.size() << std::endl;
-            return py::make_tuple(motion_plan_result, false);
+            std::cout << "[ ERROR ] Motion plan length : " << pose_result.size() << std::endl;
+            return py::make_tuple(pose_result, false);
         }
     }
 
@@ -103,9 +108,38 @@ namespace python_bindings {
         kin_solver.getFK(joint_angle, ee_pose);
         return ee_pose;
     }
+
+    // Get poses for demonstration
+    py::tuple poses_for_demonstration(std::vector<Eigen::Matrix4d> demonstration_poses, std::vector<double> gripper_states, std::vector<Eigen::Matrix4d> passive_object_poses) {
+        if (!is_init) {
+            python_bindings::init();
+            is_init = true;
+        }
+        
+        std::vector<Eigen::Matrix4d> filtered_demonstration_poses;
+        std::vector<double> filtered_gripper_cond;
+        std::vector<unsigned int> gripper_change_idx;
+        kinlib::filterSE3Sequence(demonstration_poses, filtered_demonstration_poses, gripper_states, filtered_gripper_cond, gripper_change_idx, pos_threshold, rot_threshold);
+
+        kinlib::Demonstration demo = kinlib::saveDemonstration(filtered_demonstration_poses, passive_object_poses, gripper_states, filtered_gripper_cond, gripper_change_idx);
+        
+        std::vector<Eigen::Matrix4d> pose_result;
+        kinlib::ErrorCodes plan_res = kinlib::UserGuidedMotionPlanner::planMotionForNewTaskInstance(demo, demo.task_instance, pose_result);
+
+        if (plan_res == kinlib::ErrorCodes::OPERATION_SUCCESS) {
+            std::cout << "[SUCCESS] Demonstration poses computed successfully!\n";
+            std::cout << "[SUCCESS] Demonstration pose sequence length : " << pose_result.size() << std::endl;
+            return py::make_tuple(pose_result, true);
+        } else {
+            std::cout << "[ ERROR ] Demonstration pose computation failed!\n";
+            std::cout << "[ ERROR ] Demonstration pose sequence length : " << pose_result.size() << std::endl;
+            return py::make_tuple(pose_result, false);
+        }
+    }
 }
 
 PYBIND11_MODULE(kinlib_cpp, m) {
     m.def("motion_plan_for_goal_pose", &python_bindings::motion_plan_for_goal_pose, "Compute motion plan for goal pose given initial joint angles.");
     m.def("forward_kinematics", &python_bindings::forward_kinematics, "Compute end-effector pose for given joint angles.");
+    m.def("poses_for_demonstration", &python_bindings::poses_for_demonstration, "Compute poses for demonstration given initial EE pose.");
 }

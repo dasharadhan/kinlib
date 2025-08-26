@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.5)
 project(kinlib)
 
 # Set CXX Standard for the project
-# set(CMAKE_CXX_STANDARD 17)
-add_compile_options(-std=c++11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+#set(USE_PYTHON_BINDINGS ON) # Uncomment this to use python bindings
 
 include(GNUInstallDirs)
 
@@ -37,6 +38,14 @@ add_library(${PROJECT_NAME}
   src/nullSpace_kinematics.cpp
   src/robot_parameter.cpp
 )
+
+if(USE_PYTHON_BINDINGS)
+  set(PYBIND11_FINDPYTHON ON)
+  find_package(pybind11 CONFIG REQUIRED)
+  pybind11_add_module(kinlib_cpp src/python_bindings.cpp)
+  target_link_libraries(kinlib_cpp PRIVATE ${PROJECT_NAME})
+endif()
+
 target_include_directories(${PROJECT_NAME} PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	$<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>
