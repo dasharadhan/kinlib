@@ -970,7 +970,8 @@ ErrorCodes KinematicsSolver::getMotionPlanWithNSP(
     std::vector<Eigen::VectorXd> &jnt_values_seq,
     MotionPlanResult &plan_result,
     double &outer_threshold,
-    double &inner_threshold
+    double &inner_threshold,
+    int max_attempts
 ) {
     // 1) Clear and seed with the initial joint configuration
     jnt_values_seq.clear();
@@ -994,7 +995,7 @@ ErrorCodes KinematicsSolver::getMotionPlanWithNSP(
     // Robot definition
     // nullSpace::Robot panda = nullSpace::getPandaRobot();
     // nullSpace::Robot panda = robot;
-    while (!(pos_dist < 0.0001 && rot_dist < 0.001) && itr_cnt < convergence_threshold) {
+    while (!(pos_dist < 0.0001 && rot_dist < 0.001) && itr_cnt < convergence_threshold && null_space_attempts < max_attempts) {
         itr_cnt++;
 
         // --- ScLERP interpolation ---

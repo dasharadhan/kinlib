@@ -284,7 +284,8 @@ class KinematicsSolver
         std::vector<Eigen::VectorXd> &jnt_values_seq,
         MotionPlanResult &plan_result,
         double &outer_threshold,
-        double &inner_threshold
+        double &inner_threshold,
+        int max_attempts = 50
     );
 
 
