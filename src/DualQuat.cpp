@@ -283,8 +283,10 @@ DualQuat DualQuat::raiseToPower(const double &pwr)
   Eigen::Vector4d res_real_part;
   Eigen::Vector4d res_dual_part;
 
-  if(theta == 0)
+  // handle edge cases for theta, the threshold 1e-6 worked for me
+  if(std::abs(theta) < 1e-6)
   {
+    theta = 0;
     Eigen::Vector3d v = getDualPartVec().tail<3>();
 
     double d = 2 * v.norm();
