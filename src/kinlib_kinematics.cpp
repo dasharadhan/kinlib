@@ -1052,15 +1052,22 @@ ErrorCodes KinematicsSolver::getMotionPlanWithNSP(
             //         joint_id,
             //         outer_threshold,
             //         inner_threshold);
-            std::tuple<int,int,int> stepLimitRes = nullSpace::checkStepLimits( robot, current_joint_values, reach_up_limit, joint_id, outer_threshold, inner_threshold);
+            std::tuple<int,int,int,bool> stepLimitRes = nullSpace::checkStepLimits( robot, current_joint_values, reach_up_limit, joint_id, outer_threshold, inner_threshold);
             int SEW_direction = std::get<0>(stepLimitRes);
             int step_back_to_inner_limit = std::get<1>(stepLimitRes);
             int step_out_of_outer_limit = std::get<2>(stepLimitRes);
+            bool step_limit_success = std::get<3>(stepLimitRes);
             
             if (step_out_of_outer_limit <= 2) {
                 std::cerr << "cannot reach goal pose, reach joint limit\n";
                 plan_result.result = MotionPlanReturnCodes::JOINT_LIMITS_VIOLATED;
                 return ErrorCodes::JOINT_LIMIT_ERROR;
+            }
+
+            if (!step_limit_success) {
+                std::cerr << "Null space exploration: Reached maximum iteration\n";
+                plan_result.result = MotionPlanReturnCodes::UNKNOWN;
+                return ErrorCodes::OPERATION_FAILURE;
             }
           
 

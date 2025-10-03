@@ -242,12 +242,14 @@ int decideSEWDirection(const Robot& robot, Eigen::VectorXd& theta, const bool& r
 }
 
 
-std::tuple<int,int,int> checkStepLimits( const Robot& robot, 
+std::tuple<int,int,int,bool> checkStepLimits( const Robot& robot, 
                                     Eigen::VectorXd theta, 
                                     bool& reach_up_limit,  
                                     const int& joint_idx,  
                                     const double& outer_threshold , 
-                                    const double& inner_threshold ){
+                                    const double& inner_threshold,
+                                    int max_steps_back_from_soft_joint_limit,
+                                    int max_steps_around_soft_joint_limit){
 
     int SEW_direction = nullSpace::decideSEWDirection(robot, theta, reach_up_limit, joint_idx );
 
@@ -255,7 +257,7 @@ std::tuple<int,int,int> checkStepLimits( const Robot& robot,
     int step_out_of_limit = 0;
     Eigen::VectorXd q_next;  
 
-    while(true)
+    while(step_back_to_limit < max_steps_back_from_soft_joint_limit)
       {
         Eigen::MatrixXd J_a = nullSpace::getAugmentedJacobian(robot, theta);
         Eigen::MatrixXd J_pinv = nullSpace::pinv(J_a);
@@ -275,7 +277,7 @@ std::tuple<int,int,int> checkStepLimits( const Robot& robot,
         // std::cout<<dq<<"\n";
       }
 
-    while(true)
+    while(step_out_of_limit < max_steps_around_soft_joint_limit)
       {
         Eigen::MatrixXd J_a = nullSpace::getAugmentedJacobian(robot, theta);
         Eigen::MatrixXd J_pinv = nullSpace::pinv(J_a);
@@ -299,7 +301,8 @@ std::tuple<int,int,int> checkStepLimits( const Robot& robot,
         theta = q_next;
         
       }
-    return {SEW_direction, step_back_to_limit, step_out_of_limit};
+    bool success = step_back_to_limit < max_steps_back_from_soft_joint_limit && step_out_of_limit < max_steps_around_soft_joint_limit;
+    return {SEW_direction, step_back_to_limit, step_out_of_limit, success};
 };
 
 

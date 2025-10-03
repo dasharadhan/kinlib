@@ -68,11 +68,13 @@ namespace nullSpace{
     const Robot& robot,     
     const Eigen::VectorXd& theta);  
     
-    std::tuple<int,int,int> checkStepLimits( const Robot& robot, 
+    std::tuple<int,int,int,bool> checkStepLimits( const Robot& robot, 
                                     Eigen::VectorXd theta, 
                                     bool& reach_up_limit,  
                                     const int& joint_idx,  
                                     const double& outer_threshold , 
-                                    const double& inner_threshold );
+                                    const double& inner_threshold,
+                                    int max_steps_back_from_soft_joint_limit = 10000,
+                                    int max_steps_around_soft_joint_limit = 10000);
     int decideSEWDirection(const Robot& robot, Eigen::VectorXd& theta, const bool& reach_up_limit, const int& joint_idx);
 }

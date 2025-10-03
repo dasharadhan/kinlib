@@ -4,4 +4,5 @@ namespace nullSpace {
 
 Robot getPandaRobot();
 Robot getBaxterRobot();
+Robot getKinovaRobot();
 }

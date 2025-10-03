@@ -3,3 +3,6 @@ build/*
 
 # VS Code Config Files
 .vscode/*
+
+# MacOS files
+.DS_Store
