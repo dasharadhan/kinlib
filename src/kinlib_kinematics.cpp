@@ -1146,6 +1146,12 @@ ErrorCodes KinematicsSolver::getMotionPlanWithNSP(
         return ErrorCodes::OPERATION_FAILURE;
     }
 
+    if (null_space_attempts >= max_attempts) {
+        std::cerr << "Null space exploration: Reached maximum attempts\n";
+        plan_result.result = MotionPlanReturnCodes::UNKNOWN;
+        return ErrorCodes::OPERATION_FAILURE;
+    }
+
     plan_result.result = MotionPlanReturnCodes::PLAN_SUCCES;
     return ErrorCodes::OPERATION_SUCCESS;
 }
